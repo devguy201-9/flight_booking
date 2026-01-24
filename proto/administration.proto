@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package administration;
+
+service AdministrationService {
+    rpc UserInfo (id int) returns (UserInfoResponse);
+
+}
+
+message UserInfoRequest {
+    int64 user_id = 1;
+}
+
+
+message UserInfoResponse {
+    int64 user_id = 1;
+    string fullname = 2;
+    string email = 3;
+    string address = 4;
+    string phone_number = 5;
+    enum status {
+        ACTIVE = 0;
+        INACTIVE = 1;
+        SUSPENDED = 2;
+    }
+}
+
