@@ -1,9 +1,22 @@
+use crate::core::configure::app::AppConfig;
 use crate::infrastructure::config::service_registry::{ServiceConfig, ServiceRegistry};
 
-pub async fn build_gateway_registry() -> ServiceRegistry {
+pub async fn build_gateway_registry(config: &AppConfig) -> ServiceRegistry {
     let registry = ServiceRegistry::new();
 
-    registry
+    for svc in &config.gateway.services {
+        registry
+            .register(ServiceConfig {
+                name: svc.name.clone(),
+                base_url: svc.base_url.clone(),
+                health_check_path: svc.health_check_path.clone(),
+                timeout_secs: svc.timeout_secs,
+                require_auth: svc.require_auth,
+            })
+            .await;
+    }
+
+    /*registry
         .register(ServiceConfig {
             name: "product-service".to_string(),
             base_url: std::env::var("PRODUCT_SERVICE_URL")
@@ -46,6 +59,6 @@ pub async fn build_gateway_registry() -> ServiceRegistry {
             require_auth: false,
         })
         .await;
-
+    */
     registry
 }

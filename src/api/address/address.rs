@@ -1,12 +1,12 @@
 use crate::application::address::address_command::UpdateAddressCommand;
 use crate::core::app_state::AppState;
+use crate::core::context::request_context::RequestContext;
 use crate::core::response::common::{ClientResponseError, EntityResponse};
-use crate::core::user_context::UserContext;
 use crate::presentation::address::address_request::{CreateAddressRequest, UpdateAddressRequest};
 use crate::presentation::address::address_serializer::AddressSerializer;
 use crate::presentation::http::ApiResult;
-use axum::Json;
 use axum::extract::{Path, Query, State};
+use axum::{Extension, Json};
 use log::error;
 use serde::Deserialize;
 
@@ -17,8 +17,8 @@ pub struct UserIdQuery {
 
 #[utoipa::path(
     post,
-    path = "/v1/addresses",
-    tags = ["address_service"],
+    path = "api/v1/addresses",
+    tags = ["address"],
     request_body = CreateAddressRequest,
     responses(
         (status = 201, description = "Address created successfully", body = EntityResponse<bool>),
@@ -30,13 +30,12 @@ pub struct UserIdQuery {
 )]
 pub async fn controller_create_address(
     State(state): State<AppState>,
-    ctx: UserContext,
+    Extension(ctx): Extension<RequestContext>,
     Json(req): Json<CreateAddressRequest>,
 ) -> ApiResult<Json<EntityResponse<bool>>> {
-    log::info!("Creating address for user_id: {}", ctx.user_id);
-    let command = req.to_command(ctx.user_id);
+    let command = req.to_command();
 
-    let result = state.address_service.create_address(command).await?;
+    let result = state.address_service.create_address(ctx, command).await?;
 
     Ok(Json(EntityResponse {
         message: "Address created successfully.".to_string(),
@@ -47,8 +46,8 @@ pub async fn controller_create_address(
 
 #[utoipa::path(
     put,
-    path = "/v1/addresses/{id}",
-    tags = ["address_service"],
+    path = "api/v1/addresses/{id}",
+    tags = ["address"],
     request_body = UpdateAddressRequest,
     params(
         ("id" = i64, Path, description = "Address ID")
@@ -64,13 +63,17 @@ pub async fn controller_create_address(
 )]
 pub async fn controller_update_address(
     State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
     Path(id): Path<i64>,
     Json(req): Json<UpdateAddressRequest>,
 ) -> ApiResult<Json<EntityResponse<bool>>> {
     log::info!("Updating address with id: {}", id);
     let command: UpdateAddressCommand = req.into();
 
-    let result = state.address_service.update_address(id, command).await?;
+    let result = state
+        .address_service
+        .update_address(ctx, id, command)
+        .await?;
 
     Ok(Json(EntityResponse {
         message: "Address updated successfully.".to_string(),
@@ -81,8 +84,8 @@ pub async fn controller_update_address(
 
 #[utoipa::path(
     get,
-    path = "/v1/addresses/{id}",
-    tags = ["address_service"],
+    path = "api/v1/addresses/{id}",
+    tags = ["address"],
     params(
         ("id" = i64, Path, description = "Address ID")
     ),
@@ -96,11 +99,12 @@ pub async fn controller_update_address(
 )]
 pub async fn controller_get_address_by_id(
     State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
     Path(id): Path<i64>,
 ) -> ApiResult<Json<EntityResponse<AddressSerializer>>> {
     log::info!("Getting address with id: {}", id);
 
-    let dto = state.address_service.get_address_by_id(id).await?;
+    let dto = state.address_service.get_address_by_id(ctx, id).await?;
 
     Ok(Json(EntityResponse {
         message: "Address retrieved successfully.".to_string(),
@@ -111,8 +115,8 @@ pub async fn controller_get_address_by_id(
 
 #[utoipa::path(
     get,
-    path = "/v1/addresses",
-    tags = ["address_service"],
+    path = "api/v1/addresses",
+    tags = ["address"],
     params(
         ("user_id" = i64, Query, description = "User ID to get addresses for")
     ),
@@ -125,14 +129,14 @@ pub async fn controller_get_address_by_id(
 )]
 pub async fn controller_get_addresses_by_user_id(
     State(state): State<AppState>,
-    ctx: UserContext,
-    Query(params): Query<UserIdQuery>
+    Extension(ctx): Extension<RequestContext>,
+    Query(params): Query<UserIdQuery>,
 ) -> ApiResult<Json<EntityResponse<Vec<AddressSerializer>>>> {
-    log::info!("Getting addresses for user_id: {}", ctx.user_id);
+    log::info!("Get list address of user id: {}.", params.user_id);
 
     let list = state
         .address_service
-        .get_addresses_by_user_id(params.user_id)
+        .get_addresses_by_user_id(ctx, params.user_id)
         .await?;
 
     let data: Vec<AddressSerializer> = list.into_iter().map(Into::into).collect();
@@ -146,8 +150,8 @@ pub async fn controller_get_addresses_by_user_id(
 
 #[utoipa::path(
     delete,
-    path = "/v1/addresses/{id}",
-    tags = ["address_service"],
+    path = "api/v1/addresses/{id}",
+    tags = ["address"],
     params(
         ("id" = i64, Path, description = "Address ID")
     ),
@@ -161,14 +165,13 @@ pub async fn controller_get_addresses_by_user_id(
 )]
 pub async fn controller_delete_address(
     State(state): State<AppState>,
-    ctx: UserContext,
+    Extension(ctx): Extension<RequestContext>,
     Path(id): Path<i64>,
+    Query(params): Query<UserIdQuery>,
 ) -> ApiResult<Json<EntityResponse<bool>>> {
-    log::info!("Deleting address id={} by user_id={}", id, ctx.user_id);
-
     let result = state
         .address_service
-        .delete_address(id, ctx.user_id)
+        .delete_address(ctx, id, params.user_id)
         .await?;
 
     Ok(Json(EntityResponse {

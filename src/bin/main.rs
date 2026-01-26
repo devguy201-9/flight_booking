@@ -1,6 +1,6 @@
 use anyhow::Result;
+use flight_booking::infrastructure::bootstrap::app_state_builder::AppStateBuilder;
 use flight_booking::infrastructure::http::server::AppServer;
-use flight_booking::infrastructure::runtime::config::CONFIG;
 use log::{LevelFilter, error, info};
 
 #[tokio::main]
@@ -11,8 +11,9 @@ async fn main() -> Result<()> {
         .init();
 
     info!("The initialization of Tracing was successful!");
-    let config = CONFIG.clone();
-    let server = AppServer::new(config).await?;
+    let (state, addr) = AppStateBuilder::build().await?;
+
+    let server = AppServer::build(state, addr).await?;
     info!("Starting server...");
 
     if let Err(err) = server.run().await {

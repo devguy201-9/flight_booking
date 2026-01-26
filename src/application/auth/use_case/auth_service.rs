@@ -1,10 +1,13 @@
 use crate::application::auth::auth_command::{LoginByEmailCommand, RefreshTokenCommand};
+use crate::application::auth::dto::authenticated_user::AuthenticatedUser;
 use crate::application::auth::password_hasher::PasswordHasher;
 use crate::application::auth::token_service::{LoginResultDto, TokenService, UserInfoDto};
 use crate::application::auth::use_case::auth_service_interface::AuthServiceInterface;
 use crate::application::common::cache_interface::CacheInterface;
 use crate::application::common::event_publisher::UserEventPublisher;
 use crate::application::common::use_case_error::{UseCaseError, UseCaseResult};
+use crate::core::context::request_context::RequestContext;
+use crate::core::context::request_context_provider::RequestContextProvider;
 use crate::domain::error::DomainError;
 use crate::domain::user;
 use crate::domain::user::errors::UserDomainError;
@@ -49,15 +52,11 @@ impl AuthService {
     }
 
     fn invalid_credentials_err() -> UseCaseError {
-        UseCaseError::Domain(DomainError::User(UserDomainError::Unauthorized {
-            message: "Invalid email or password".to_string(),
-        }))
+        UseCaseError::PermissionDenied
     }
 
     fn refresh_session_expired_err() -> UseCaseError {
-        UseCaseError::Domain(DomainError::User(UserDomainError::Unauthorized {
-            message: "Refresh session expired".to_string(),
-        }))
+        UseCaseError::PermissionDenied
     }
 }
 
@@ -122,7 +121,7 @@ impl AuthServiceInterface for AuthService {
         // issue tokens
         let token_pair = self
             .token_service
-            .generate_tokens(user.id, session_id)
+            .generate_tokens(user.id, session_id, user.role.as_str())
             .map_err(|e| UseCaseError::Unexpected(e.to_string()))?;
 
         // Store refresh token in Redis (7 days expiry)
@@ -215,7 +214,7 @@ impl AuthServiceInterface for AuthService {
         // Issue new token pair (session_id unchanged)
         let token_pair = self
             .token_service
-            .generate_tokens(claims.user_id, claims.session_id)
+            .generate_tokens(claims.user_id, claims.session_id, claims.role.as_str())
             .map_err(|e| UseCaseError::Unexpected(e.to_string()))?;
 
         // Create UserInfo for response
@@ -223,10 +222,7 @@ impl AuthServiceInterface for AuthService {
             id: user.id,
             email: user.email.clone(),
             full_name: format!("{} {}", user.first_name, user.last_name),
-            role: match user.role {
-                user::entity::UserRole::Customer => "customer".to_string(),
-                user::entity::UserRole::Admin => "admin".to_string(),
-            },
+            role: user.role.as_str().to_string(),
         };
 
         Ok(LoginResultDto {
@@ -235,7 +231,11 @@ impl AuthServiceInterface for AuthService {
         })
     }
 
-    async fn logout(&self, user_id: i64, session_id: Uuid) -> UseCaseResult<()> {
+    async fn logout(&self, ctx: RequestContext) -> UseCaseResult<()> {
+        let (user_id, session_id) = ctx
+            .require_user()
+            .map_err(|_| UseCaseError::PermissionDenied)?;
+
         // Delete refresh token from Redis
         self.cache
             .del(&Self::refresh_session_cache_key(session_id))
@@ -243,5 +243,8 @@ impl AuthServiceInterface for AuthService {
             .map_err(|e| UseCaseError::Unexpected(e.to_string()))?;
 
         Ok(())
+    }
+    async fn decode_access_token(&self, token: &str) -> UseCaseResult<AuthenticatedUser> {
+        self.token_service.decode_access_token(token)
     }
 }

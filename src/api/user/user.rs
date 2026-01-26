@@ -11,12 +11,12 @@ use crate::presentation::user::user_serializer::{
     UserBasicSerializer, UserCreatedSerializer, UserSerializer,
 };
 
+use crate::core::context::request_context::RequestContext;
 use crate::core::response::common::{ClientResponseError, EntityResponse};
-use crate::core::user_context::UserContext;
 use crate::presentation::http::ApiResult;
-use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
+use axum::{Extension, Json};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -37,8 +37,8 @@ fn default_page_size() -> u64 {
 
 #[utoipa::path(
     get,
-    path = "/v1/me",
-    tags = ["user_service"],
+    path = "/api/v1/me",
+    tags = ["user"],
     responses(
         (status = 200, description = "Success get user profile", body =
         EntityResponse<UserSerializer>),
@@ -49,11 +49,9 @@ fn default_page_size() -> u64 {
 )]
 pub async fn controller_get_profile(
     State(state): State<AppState>,
-    ctx: UserContext,
+    Extension(ctx): Extension<RequestContext>,
 ) -> ApiResult<Json<EntityResponse<UserSerializer>>> {
-    log::info!("Get profile user id: {}.", ctx.user_id);
-
-    let result = state.user_service.get_profile(ctx.user_id).await?;
+    let result = state.user_service.get_my_profile(ctx).await?;
 
     Ok(Json(EntityResponse {
         message: "Successfully get profile.".to_string(),
@@ -64,8 +62,8 @@ pub async fn controller_get_profile(
 
 #[utoipa::path(
     post,
-    path = "/v1/logout",
-    tags = ["user_service"],
+    path = "/api/v1/logout",
+    tags = ["user"],
     responses(
         (status = 200, description = "Success logout", body = EntityResponse<String>),
         (status = 401, description = "Unauthorized", body = ClientResponseError),
@@ -75,10 +73,9 @@ pub async fn controller_get_profile(
 )]
 pub async fn controller_logout(
     State(state): State<AppState>,
-    ctx: UserContext,
+    Extension(ctx): Extension<RequestContext>,
 ) -> ApiResult<Json<EntityResponse<String>>> {
-    log::info!("Logout user id: {}", ctx.user_id);
-    state.user_service.logout(ctx.user_id).await?;
+    state.user_service.logout(ctx).await?;
 
     Ok(Json(EntityResponse {
         message: "Successfully logged out.".to_string(),
@@ -89,8 +86,8 @@ pub async fn controller_logout(
 
 #[utoipa::path(
     post,
-    path = "/v1/auth/register",
-    tags = ["user_service"],
+    path = "/api/v1/auth/register",
+    tags = ["user"],
     request_body = RegisterUserRequest,
     responses(
         (status = 201, description = "User registered successfully", body = EntityResponse<UserCreatedSerializer>),
@@ -119,8 +116,8 @@ pub async fn controller_register_user(
 
 #[utoipa::path(
     post,
-    path = "/v1/auth/verify-email",
-    tags = ["user_service"],
+    path = "/api/v1/auth/verify-email",
+    tags = ["user"],
     request_body = VerifyEmailRequest,
     responses(
         (status = 200, description = "Email verified successfully", body = EntityResponse<bool>),
@@ -145,8 +142,8 @@ pub async fn controller_verify_email(
 
 #[utoipa::path(
     post,
-    path = "/v1/auth/resend-verification",
-    tags = ["user_service"],
+    path = "/api/v1/auth/resend-verification",
+    tags = ["user"],
     request_body = ResendVerificationEmailRequest,
     responses(
         (status = 200, description = "Verification email resent successfully", body = EntityResponse<bool>),
@@ -175,8 +172,8 @@ pub async fn controller_resend_verification_email(
 
 #[utoipa::path(
     post,
-    path = "/v1/users",
-    tags = ["user_service"],
+    path = "/api/v1/users",
+    tags = ["user"],
     request_body = AdminCreateUserRequest,
     responses(
         (status = 201, description = "User created successfully", body = EntityResponse<bool>),
@@ -187,12 +184,13 @@ pub async fn controller_resend_verification_email(
 )]
 pub async fn controller_create_user(
     State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
     Json(req): Json<AdminCreateUserRequest>,
 ) -> ApiResult<Json<EntityResponse<bool>>> {
     log::info!("Creating user with email: {}", req.email);
     let command: AdminCreateUserCommand = req.into();
 
-    let result = state.user_service.create_user(command).await?;
+    let result = state.user_service.create_user(ctx, command).await?;
 
     Ok(Json(EntityResponse {
         message: "User created successfully.".to_string(),
@@ -203,8 +201,8 @@ pub async fn controller_create_user(
 
 #[utoipa::path(
     put,
-    path = "/v1/users/{id}",
-    tags = ["user_service"],
+    path = "/api/v1/users/{id}",
+    tags = ["user"],
     request_body = UpdateUserRequest,
     params(
         ("id" = i64, Path, description = "User ID")
@@ -220,12 +218,13 @@ pub async fn controller_create_user(
 )]
 pub async fn controller_update_user(
     State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
     Path(id): Path<i64>,
     Json(req): Json<UpdateUserRequest>,
 ) -> ApiResult<Json<EntityResponse<bool>>> {
     log::info!("Updating user with id: {}", id);
     let command: UpdateUserCommand = req.into();
-    let result = state.user_service.update_user(id, command).await?;
+    let result = state.user_service.update_user(ctx, id, command).await?;
 
     Ok(Json(EntityResponse {
         message: "User updated successfully.".to_string(),
@@ -236,13 +235,13 @@ pub async fn controller_update_user(
 
 #[utoipa::path(
     get,
-    path = "/v1/users/{id}",
-    tags = ["user_service"],
+    path = "/api/v1/users/{id}",
+    tags = ["user"],
     params(
         ("id" = i64, Path, description = "User ID")
     ),
     responses(
-        (status = 200, description = "User retrieved successfully", body = EntityResponse<UserSerializer>),
+        (status = 200, description = "User retrieved successfully", body = EntityResponse<UserBasicSerializer>),
         (status = 401, description = "Unauthorized", body = ClientResponseError),
         (status = 404, description = "User not found", body = ClientResponseError),
         (status = 500, description = "Internal server error", body = ClientResponseError)
@@ -251,10 +250,11 @@ pub async fn controller_update_user(
 )]
 pub async fn controller_get_user_by_id(
     State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
     Path(id): Path<i64>,
-) -> ApiResult<Json<EntityResponse<UserSerializer>>> {
+) -> ApiResult<Json<EntityResponse<UserBasicSerializer>>> {
     log::info!("Getting user with id: {}", id);
-    let result = state.user_service.get_profile(id).await?;
+    let result = state.user_service.get_user_by_id(ctx, id).await?;
 
     Ok(Json(EntityResponse {
         message: "User retrieved successfully.".to_string(),
@@ -265,8 +265,8 @@ pub async fn controller_get_user_by_id(
 
 #[utoipa::path(
     get,
-    path = "/v1/users",
-    tags = ["user_service"],
+    path = "/api/v1/users",
+    tags = ["user"],
     params(
         ("page" = Option<u64>, Query, description = "Page number (default: 0)"),
         ("page_size" = Option<u64>, Query, description = "Page size (default: 10)")
@@ -304,8 +304,8 @@ pub async fn controller_list_users(
 
 #[utoipa::path(
     delete,
-    path = "/v1/users/{id}",
-    tags = ["user_service"],
+    path = "/api/v1/users/{id}",
+    tags = ["user"],
     params(
         ("id" = i64, Path, description = "User ID")
     ),
@@ -319,10 +319,11 @@ pub async fn controller_list_users(
 )]
 pub async fn controller_delete_user(
     State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
     Path(id): Path<i64>,
 ) -> ApiResult<Json<EntityResponse<String>>> {
     log::info!("Deleting user with id: {}", id);
-    state.user_service.delete_user(id).await?;
+    state.user_service.delete_user(ctx, id).await?;
 
     Ok(Json(EntityResponse {
         message: "User deleted successfully.".to_string(),

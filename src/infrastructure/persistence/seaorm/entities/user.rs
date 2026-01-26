@@ -5,8 +5,7 @@ use sea_orm::entity::prelude::*;
 use sea_orm::sea_query::StringLen;
 use sea_orm::RelationTrait;
 use sea_orm::{
-    DeriveActiveEnum, DeriveEntityModel, DeriveRelation, EnumIter, Related,
-    RelationDef,
+    DeriveActiveEnum, DeriveEntityModel, DeriveRelation, EnumIter, Related, RelationDef,
 };
 use serde::{Deserialize, Serialize};
 /*
@@ -122,5 +121,5 @@ pub enum Role {
     #[sea_orm(string_value = "STAFF")]
     STAFF,
 }
-
+impl ActiveModelBehavior for ActiveModel {}
 impl_audit_for_entity!(super::user::ActiveModel);

@@ -1,3 +1,4 @@
+use std::net::AddrParseError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -161,5 +162,13 @@ impl From<sea_orm::error::DbErr> for TechnicalError {
 impl From<redis::RedisError> for TechnicalError {
     fn from(e: redis::RedisError) -> Self {
         TechnicalError::Network(e.to_string())
+    }
+}
+
+impl From<AddrParseError> for TechnicalError {
+    fn from(e: AddrParseError) -> Self {
+        TechnicalError::InvalidConfig(format!(
+            "invalid server socket address: {e}"
+        ))
     }
 }

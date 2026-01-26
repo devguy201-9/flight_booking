@@ -8,7 +8,7 @@ use crate::domain::user::rules::{
     VerificationResendLimitMustNotBeExceeded, VerificationTokenMustNotBeExpired,
 };
 use chrono::{NaiveDate, NaiveDateTime};
-use rand::{rngs::OsRng, RngCore};
+use rand::{RngCore, rngs::OsRng};
 
 #[derive(Debug, Clone)]
 pub struct RegisterUserProps {
@@ -185,6 +185,14 @@ pub enum UserRole {
     Admin,
 }
 
+impl UserRole {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            UserRole::Customer => "customer",
+            UserRole::Admin => "admin",
+        }
+    }
+}
 // Domain Rules - Create and validate Models
 // Validates all business rules before creating the model
 impl User {

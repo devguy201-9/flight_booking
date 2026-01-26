@@ -1,7 +1,9 @@
+use crate::core::context::request_context_provider::RequestContextProvider;
 use crate::domain::address::address_repository_interface::AddressRepositoryInterface;
 use crate::domain::address::entity::Address as DomainAddress;
 use crate::domain::address::error::AddressDomainError;
 use crate::domain::error::DomainError;
+use crate::infrastructure::persistence::seaorm::base_behavior::Auditable;
 use crate::infrastructure::persistence::seaorm::entities::address::{ActiveModel, Column, Entity};
 use crate::infrastructure::persistence::seaorm::mappers::address_mapper::AddressMapper;
 use async_trait::async_trait;
@@ -12,11 +14,18 @@ use std::sync::Arc;
 
 pub struct SeaOrmAddressRepository {
     pub db: Arc<DatabaseConnection>,
+    request_context_provider: Arc<dyn RequestContextProvider>,
 }
 
 impl SeaOrmAddressRepository {
-    pub fn new(db: Arc<DatabaseConnection>) -> Self {
-        Self { db }
+    pub fn new(
+        db: Arc<DatabaseConnection>,
+        request_context_provider: Arc<dyn RequestContextProvider>,
+    ) -> Self {
+        Self {
+            db,
+            request_context_provider,
+        }
     }
 
     fn map_db_err(e: sea_orm::DbErr) -> DomainError {
@@ -77,8 +86,9 @@ impl SeaOrmAddressRepository {
 #[async_trait]
 impl AddressRepositoryInterface for SeaOrmAddressRepository {
     async fn create_address(&self, address: &DomainAddress) -> Result<i64, DomainError> {
-        let active_model = AddressMapper::domain_to_active_model_for_create(address);
-
+        let ctx = self.request_context_provider.current();
+        let mut active_model = AddressMapper::domain_to_active_model_for_create(address);
+        active_model.apply_create_audit(&ctx);
         let res = active_model
             .insert(self.db.as_ref())
             .await
@@ -87,8 +97,9 @@ impl AddressRepositoryInterface for SeaOrmAddressRepository {
     }
 
     async fn update_address(&self, address: &DomainAddress) -> Result<(), DomainError> {
-        let active_model = AddressMapper::domain_to_active_model_for_update(address);
-
+        let ctx = self.request_context_provider.current();
+        let mut active_model = AddressMapper::domain_to_active_model_for_update(address);
+        active_model.apply_update_audit(&ctx);
         active_model
             .update(self.db.as_ref())
             .await
@@ -117,12 +128,13 @@ impl AddressRepositoryInterface for SeaOrmAddressRepository {
             .map_err(Self::map_db_err)?;
 
         let Some(model) = model else { return Ok(None) };
-
+        let ctx = self.request_context_provider.current();
         let mut active_model: ActiveModel = model.clone().into();
 
         active_model.is_deleted = Set(true);
         active_model.deleted_at = Set(Some(chrono::Utc::now().naive_utc()));
         active_model.deleted_by = Set(Some(user_id));
+        active_model.apply_update_audit(&ctx);
 
         let updated = active_model
             .update(self.db.as_ref())
