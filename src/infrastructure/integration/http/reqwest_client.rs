@@ -13,6 +13,8 @@ impl ReqwestHttpClient {
     }
 }
 
+/// Infra HTTP client adapter.
+/// Will be used when outbound HTTP abstraction is required.
 #[async_trait]
 impl HttpClient for ReqwestHttpClient {
     async fn get(&self, url: &str) -> HttpResult<HttpResponse> {

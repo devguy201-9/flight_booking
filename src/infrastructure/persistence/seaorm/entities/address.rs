@@ -59,4 +59,7 @@ pub enum AddressTypeDb {
     #[sea_orm(string_value = "OTHER")]
     OTHER,
 }
+
+impl ActiveModelBehavior for ActiveModel {}
+
 impl_audit_for_entity!(address::ActiveModel);

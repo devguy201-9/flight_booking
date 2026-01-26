@@ -2,7 +2,6 @@ use validator::Validate;
 
 #[derive(Debug, Clone, Validate)]
 pub struct CreateAddressCommand {
-    pub user_id: i64,
     pub title: Option<String>,
     pub address_line_1: String,
     pub address_line_2: Option<String>,

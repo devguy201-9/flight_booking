@@ -1,9 +1,11 @@
+use crate::core::context::request_context_provider::RequestContextProvider;
 use crate::domain::error::DomainError;
 use crate::domain::user::user_with_addresses::UserWithAddresses;
 use crate::domain::user::{
     entity::User as DomainUser, errors::UserDomainError,
     user_repository_interface::UserRepositoryInterface,
 };
+use crate::infrastructure::persistence::seaorm::base_behavior::Auditable;
 use crate::infrastructure::persistence::seaorm::entities::address as address_orm;
 use crate::infrastructure::persistence::seaorm::entities::user as user_orm;
 use crate::infrastructure::persistence::seaorm::mappers::address_mapper::AddressMapper;
@@ -17,11 +19,18 @@ use std::sync::Arc;
 
 pub struct SeaOrmUserRepository {
     pub db: Arc<DatabaseConnection>,
+    request_context_provider: Arc<dyn RequestContextProvider>,
 }
 
 impl SeaOrmUserRepository {
-    pub fn new(db: Arc<DatabaseConnection>) -> Self {
-        Self { db }
+    pub fn new(
+        db: Arc<DatabaseConnection>,
+        request_context_provider: Arc<dyn RequestContextProvider>,
+    ) -> Self {
+        Self {
+            db,
+            request_context_provider,
+        }
     }
 
     fn map_db_err(e: sea_orm::DbErr) -> DomainError {
@@ -99,7 +108,9 @@ fn map_conflict_field(msg: &str) -> &'static str {
 #[async_trait]
 impl UserRepositoryInterface for SeaOrmUserRepository {
     async fn create_user(&self, user: &DomainUser) -> Result<i64, DomainError> {
-        let active_model = UserMapper::domain_to_active_model_create(user);
+        let ctx = self.request_context_provider.current();
+        let mut active_model = UserMapper::domain_to_active_model_create(user);
+        active_model.apply_create_audit(&ctx);
 
         let inserted = active_model
             .insert(self.db.as_ref())
@@ -110,8 +121,9 @@ impl UserRepositoryInterface for SeaOrmUserRepository {
     }
 
     async fn update_user(&self, user: &DomainUser) -> Result<(), DomainError> {
-        let active_model = UserMapper::domain_to_active_model_update(user);
-
+        let ctx = self.request_context_provider.current();
+        let mut active_model = UserMapper::domain_to_active_model_update(user);
+        active_model.apply_update_audit(&ctx);
         active_model
             .update(self.db.as_ref())
             .await
@@ -178,12 +190,16 @@ impl UserRepositoryInterface for SeaOrmUserRepository {
             }
             .into());
         };
+        let ctx = self.request_context_provider.current();
 
-        let mut active: user_orm::ActiveModel = found.into();
-        active.is_deleted = Set(true);
-        active.deleted_at = Set(Some(chrono::Utc::now().naive_utc()));
-
-        active.update(self.db.as_ref()).await.map_err(Self::map_db_err)?;
+        let mut active_model: user_orm::ActiveModel = found.into();
+        active_model.is_deleted = Set(true);
+        active_model.deleted_at = Set(Some(chrono::Utc::now().naive_utc()));
+        active_model.apply_update_audit(&ctx);
+        active_model
+            .update(self.db.as_ref())
+            .await
+            .map_err(Self::map_db_err)?;
 
         Ok(())
     }

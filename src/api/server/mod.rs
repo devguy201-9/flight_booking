@@ -7,7 +7,7 @@ use log::error;
 #[utoipa::path(
     get,
     path = "/v1/server/health_check",
-    tags = ["server_service"],
+    tags = ["server"],
     responses(
         (status = 200, description = "check service is up", body = [MessageResponse])
     )
@@ -19,7 +19,7 @@ pub async fn health_check() -> ApiResult<Json<MessageResponse>> {
 #[utoipa::path(
     get,
     path = "/v1/server/state",
-    tags = ["server_service"],
+    tags = ["server"],
     responses(
         (status = 200, description = "state of connection services", body = [ServiceStatusResponse]),
         (status = 500, description = "internal server error", body = [ClientResponseError])

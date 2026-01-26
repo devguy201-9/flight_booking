@@ -1,28 +1,21 @@
-use crate::core::context::request_context::RequestContext;
-#[derive(Clone)]
-pub struct HttpRequestContext {
-    pub user_id: Option<i64>,
-    pub request_id: String,
-}
+use crate::core::context::request_context::{Actor, RequestContext};
+use axum::http::HeaderMap;
 
-impl RequestContext for HttpRequestContext {
-    fn user_id(&self) -> Option<i64> {
-        self.user_id
+pub fn build_request_context(
+    request_id: String,
+    ip_address: Option<String>,
+    headers: &HeaderMap,
+    actor: Actor,
+) -> RequestContext {
+    let user_agent = headers
+        .get(axum::http::header::USER_AGENT)
+        .and_then(|v| v.to_str().ok())
+        .map(ToString::to_string);
+
+    RequestContext {
+        request_id,
+        actor,
+        ip_address,
+        user_agent,
     }
-
-    fn request_id(&self) -> &str {
-        &self.request_id
-    }
 }
-
-
-/*
-
-Presentation tạo context
-let ctx = HttpRequestContext {
-    user_id: auth.user_id,
-    request_id: uuid::Uuid::new_v4().to_string(),
-};
-
-user_service.create_user(&ctx, request).await?;
-*/

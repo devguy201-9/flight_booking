@@ -6,3 +6,5 @@ pub mod kafka;
 pub mod redis;
 pub mod secret;
 pub mod server;
+pub mod gateway;
+pub mod deploy_mode;

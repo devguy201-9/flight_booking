@@ -1,12 +1,12 @@
 use axum::{
-    Json,
+    Extension, Json,
     body::Body,
     extract::State,
     http::{Request, Response},
 };
 
 use crate::{
-    core::{app_state::AppState, response::common::EntityResponse, user_context::UserContext},
+    core::{app_state::AppState, response::common::EntityResponse},
     infrastructure::{
         config::service_registry::ServiceConfig,
         gateway::proxy::{ProxyClient, check_service_health},
@@ -17,6 +17,7 @@ use crate::{
     },
 };
 
+use crate::core::context::request_context::RequestContext;
 use log::info;
 
 #[utoipa::path(
@@ -79,9 +80,10 @@ pub async fn gateway_health_check(
 )]
 pub async fn list_services(
     State(state): State<AppState>,
-    ctx: UserContext,
+    Extension(ctx): Extension<RequestContext>,
 ) -> AppResult<Json<EntityResponse<Vec<ServiceConfig>>>> {
-    info!("User {} listing gateway services", ctx.user_id);
+    let user_id = ctx.user_id().ok_or(HttpError::Unauthorized)?;
+    info!("User {} listing gateway services", user_id);
 
     let services = state.gateway_registry.list_all().await;
 
@@ -96,7 +98,7 @@ pub async fn list_services(
 async fn proxy_to_service(
     service_name: &str,
     state: &AppState,
-    ctx: Option<&UserContext>,
+    ctx: Option<&RequestContext>,
     request: Request<Body>,
 ) -> AppResult<Response<Body>> {
     let service_config = state
@@ -114,13 +116,14 @@ async fn proxy_to_service(
     // infra proxy client => TechnicalError -> HttpError bằng From
     let proxy_client = ProxyClient::new(service_config.timeout_secs)?;
 
+    let (user_id, session_id) = ctx
+        .as_ref()
+        .and_then(|c| c.require_user().ok())
+        .map(|(uid, sid)| (Some(uid), Some(sid.to_string())))
+        .unwrap_or((None, None));
+
     let resp = proxy_client
-        .forward_request(
-            &service_config,
-            request,
-            ctx.as_ref().map(|c| c.user_id),
-            ctx.as_ref().map(|c| c.session_id.clone().to_string()),
-        )
+        .forward_request(&service_config, request, user_id, session_id)
         .await?;
 
     Ok(resp)
@@ -132,7 +135,7 @@ async fn proxy_to_service(
 
 pub async fn proxy_to_product_service(
     State(state): State<AppState>,
-    ctx: UserContext,
+    Extension(ctx): Extension<RequestContext>,
     req: axum::extract::Request,
 ) -> AppResult<Response<Body>> {
     proxy_to_service("product-service", &state, Some(&ctx), req).await
@@ -140,7 +143,7 @@ pub async fn proxy_to_product_service(
 
 pub async fn proxy_to_order_service(
     State(state): State<AppState>,
-    ctx: UserContext,
+    Extension(ctx): Extension<RequestContext>,
     req: axum::extract::Request,
 ) -> AppResult<Response<Body>> {
     proxy_to_service("product-service", &state, Some(&ctx), req).await
@@ -148,7 +151,7 @@ pub async fn proxy_to_order_service(
 
 pub async fn proxy_to_inventory_service(
     State(state): State<AppState>,
-    ctx: UserContext,
+    Extension(ctx): Extension<RequestContext>,
     req: axum::extract::Request,
 ) -> AppResult<Response<Body>> {
     proxy_to_service("inventory-service", &state, Some(&ctx), req).await
@@ -156,7 +159,7 @@ pub async fn proxy_to_inventory_service(
 
 pub async fn proxy_to_notification_service(
     State(state): State<AppState>,
-    ctx: UserContext,
+    Extension(ctx): Extension<RequestContext>,
     req: axum::extract::Request,
 ) -> AppResult<Response<Body>> {
     proxy_to_service("notification-service", &state, Some(&ctx), req).await

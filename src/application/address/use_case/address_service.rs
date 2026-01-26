@@ -5,6 +5,7 @@ use crate::application::common::cache_helper::{cache_get_json, cache_set_json};
 use crate::application::common::cache_interface::CacheInterface;
 use crate::application::common::event_publisher::AddressEventPublisher;
 use crate::application::common::use_case_error::{UseCaseError, UseCaseResult};
+use crate::core::context::request_context::RequestContext;
 use crate::domain::address;
 use crate::domain::address::address_repository_interface::AddressRepositoryInterface;
 use crate::domain::address::entity::{AddressTypeDomain, CreateAddressProps, UpdateAddressProps};
@@ -37,8 +38,8 @@ impl AddressService {
             event_publisher,
         }
     }
-    fn address_cache_key(address_id: i64) -> String {
-        format!("address:id:{address_id}")
+    fn address_cache_key(user_id: i64, address_id: i64) -> String {
+        format!("address:user:{user_id}:id:{address_id}")
     }
 
     fn user_addresses_cache_key(user_id: i64) -> String {
@@ -48,11 +49,19 @@ impl AddressService {
 
 #[async_trait::async_trait]
 impl AddressServiceInterface for AddressService {
-    async fn create_address(&self, command: CreateAddressCommand) -> UseCaseResult<bool> {
+    async fn create_address(
+        &self,
+        ctx: RequestContext,
+        command: CreateAddressCommand,
+    ) -> UseCaseResult<bool> {
+        let (user_id, _) = ctx
+            .require_user()
+            .map_err(|_| UseCaseError::PermissionDenied)?;
+
         // Ensure user exists
         let user_exists = self
             .user_repo
-            .find_user_by_id(command.user_id)
+            .find_user_by_id(user_id)
             .await
             .map_err(|e| UseCaseError::Unexpected(e.to_string()))?
             .is_some();
@@ -60,13 +69,13 @@ impl AddressServiceInterface for AddressService {
         if !user_exists {
             return Err(UseCaseError::NotFound(format!(
                 "User with id {} not found",
-                command.user_id
+                user_id
             )));
         }
 
         // Domain: Create model with validation
         let props = CreateAddressProps {
-            user_id: command.user_id,
+            user_id,
             title: command.title.clone(),
             address_line_1: command.address_line_1.clone(),
             address_line_2: command.address_line_2.clone(),
@@ -102,7 +111,16 @@ impl AddressServiceInterface for AddressService {
         Ok(true)
     }
 
-    async fn update_address(&self, id: i64, command: UpdateAddressCommand) -> UseCaseResult<bool> {
+    async fn update_address(
+        &self,
+        ctx: RequestContext,
+        id: i64,
+        command: UpdateAddressCommand,
+    ) -> UseCaseResult<bool> {
+        let (user_id, _) = ctx
+            .require_user()
+            .map_err(|_| UseCaseError::PermissionDenied)?;
+
         // Database: Get existing address
         let mut existing_address = self
             .address_repo
@@ -110,6 +128,10 @@ impl AddressServiceInterface for AddressService {
             .await
             .map_err(|e| UseCaseError::Unexpected(e.to_string()))?
             .ok_or_else(|| UseCaseError::NotFound(format!("Address with id {} not found", id)))?;
+
+        if existing_address.user_id != user_id {
+            return Err(UseCaseError::PermissionDenied);
+        }
 
         let address_type = match &command.r#type {
             Some(t) => Some(AddressTypeDomain::try_from(t.as_str()).map_err(DomainError::from)?),
@@ -157,8 +179,9 @@ impl AddressServiceInterface for AddressService {
         Ok(true)
     }
 
-    async fn get_address_by_id(&self, id: i64) -> UseCaseResult<AddressDto> {
-        let cache_key = Self::address_cache_key(id);
+    async fn get_address_by_id(&self, ctx: RequestContext, id: i64) -> UseCaseResult<AddressDto> {
+        let user_id = ctx.user_id().ok_or(UseCaseError::PermissionDenied)?;
+        let cache_key = Self::address_cache_key(user_id, id);
 
         // Cache
         match cache_get_json::<AddressDto>(self.cache.as_ref(), &cache_key).await {
@@ -174,6 +197,15 @@ impl AddressServiceInterface for AddressService {
             .await
             .map_err(|e| UseCaseError::Unexpected(e.to_string()))?
             .ok_or_else(|| UseCaseError::NotFound(format!("Address with id {} not found", id)))?;
+
+        if !ctx.is_admin()
+            && ctx
+                .user_id()
+                .is_some_and(|uid| uid != existing_address.user_id)
+        {
+            return Err(UseCaseError::PermissionDenied);
+        }
+
         // Domain -> DTO
         let address_dto: AddressDto = existing_address.into();
 
@@ -185,7 +217,20 @@ impl AddressServiceInterface for AddressService {
         Ok(address_dto)
     }
 
-    async fn delete_address(&self, id: i64, user_id: i64) -> UseCaseResult<bool> {
+    async fn delete_address(
+        &self,
+        ctx: RequestContext,
+        id: i64,
+        user_id: i64,
+    ) -> UseCaseResult<bool> {
+        let (user_id_check, _) = ctx
+            .require_user()
+            .map_err(|_| UseCaseError::PermissionDenied)?;
+
+        if !ctx.is_admin() && user_id_check != user_id {
+            return Err(UseCaseError::PermissionDenied);
+        }
+
         // Database: Check if address exists
         let existing_address = self
             .address_repo
@@ -193,6 +238,10 @@ impl AddressServiceInterface for AddressService {
             .await
             .map_err(|e| UseCaseError::Unexpected(e.to_string()))?
             .ok_or_else(|| UseCaseError::NotFound(format!("Address with id {} not found", id)))?;
+
+        if existing_address.user_id != user_id {
+            return Err(UseCaseError::PermissionDenied);
+        }
 
         // Database: Soft delete
         self.address_repo
@@ -217,7 +266,24 @@ impl AddressServiceInterface for AddressService {
         Ok(true)
     }
 
-    async fn get_addresses_by_user_id(&self, user_id: i64) -> UseCaseResult<Vec<AddressDto>> {
+    async fn get_addresses_by_user_id(
+        &self,
+        ctx: RequestContext,
+        user_id: i64,
+    ) -> UseCaseResult<Vec<AddressDto>> {
+        let (user_id_check, _) = ctx
+            .require_user()
+            .map_err(|_| UseCaseError::PermissionDenied)?;
+
+        if !ctx.is_admin() && user_id_check != user_id {
+            return Err(UseCaseError::PermissionDenied);
+        }
+
+        let cache_key = Self::user_addresses_cache_key(user_id);
+
+        if let Ok(Some(cached)) = cache_get_json(self.cache.as_ref(), &cache_key).await {
+            return Ok(cached);
+        }
         // Database: Fetch addresses for user
         let addresses = self
             .address_repo
@@ -225,6 +291,10 @@ impl AddressServiceInterface for AddressService {
             .await
             .map_err(|e| UseCaseError::Unexpected(e.to_string()))?;
 
-        Ok(addresses.into_iter().map(Into::into).collect())
+        let dto: Vec<AddressDto> = addresses.into_iter().map(Into::into).collect();
+
+        let _ = cache_set_json(self.cache.as_ref(), &cache_key, &dto, 3600).await;
+
+        Ok(dto)
     }
 }

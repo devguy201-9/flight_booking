@@ -1,5 +1,7 @@
 use crate::core::configure::db::DatabaseConfig;
+use crate::core::configure::deploy_mode::DeployMode;
 use crate::core::configure::env::get_env_source;
+use crate::core::configure::gateway::GatewayConfig;
 use crate::core::configure::http::HttpClientConfig;
 use crate::core::configure::kafka::KafkaConfig;
 use crate::core::configure::redis::RedisConfig;
@@ -12,6 +14,7 @@ use utils::dir::get_project_root;
 #[derive(Debug, Deserialize, Clone)]
 pub struct AppConfig {
     pub profile: Profile,
+    pub deploy_mode: DeployMode,
     pub server: ServerConfig,
     pub db: DatabaseConfig,
     pub sentry: Sentry,
@@ -19,6 +22,7 @@ pub struct AppConfig {
     pub secret: SecretConfig,
     pub http: HttpClientConfig,
     pub kafka: KafkaConfig,
+    pub gateway: GatewayConfig,
 }
 
 impl AppConfig {
@@ -38,11 +42,15 @@ impl AppConfig {
 }
 
 pub fn get_settings_dir() -> Result<std::path::PathBuf, ConfigError> {
-    Ok(get_project_root().map_err(|e| ConfigError::Message(e.to_string()))?.join("settings"))
+    Ok(get_project_root()
+        .map_err(|e| ConfigError::Message(e.to_string()))?
+        .join("settings"))
 }
 
 pub fn get_static_dir() -> Result<std::path::PathBuf, ConfigError> {
-    Ok(get_project_root().map_err(|e| ConfigError::Message(e.to_string()))?.join("static"))
+    Ok(get_project_root()
+        .map_err(|e| ConfigError::Message(e.to_string()))?
+        .join("static"))
 }
 
 #[derive(

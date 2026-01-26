@@ -2,9 +2,8 @@ use crate::application::address::address_command::{CreateAddressCommand, UpdateA
 use crate::presentation::address::address_request::{CreateAddressRequest, UpdateAddressRequest};
 
 impl CreateAddressRequest {
-    pub fn to_command(self, user_id: i64) -> CreateAddressCommand {
+    pub fn to_command(self) -> CreateAddressCommand {
         CreateAddressCommand {
-            user_id,
             title: self.title,
             address_line_1: self.address_line_1,
             address_line_2: self.address_line_2,

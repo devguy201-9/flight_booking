@@ -9,16 +9,18 @@ pub struct UserClaims {
     pub exp: i64,
     pub user_id: i64,
     pub sid: Uuid,
+    pub role: String,
 }
 
 impl UserClaims {
-    pub fn new(duration: Duration, user_id: i64, session_id: Uuid) -> Self {
+    pub fn new(duration: Duration, user_id: i64, session_id: Uuid, role: &str) -> Self {
         let now = Utc::now().timestamp();
         Self {
             iat: now,
             exp: now + duration.as_secs() as i64,
             user_id,
             sid: session_id,
+            role: role.to_string(),
         }
     }
 }

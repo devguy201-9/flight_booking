@@ -10,6 +10,7 @@ use crate::application::user::user_command::{
     AdminCreateUserCommand, RegisterUserCommand, ResendVerificationEmailCommand, UpdateUserCommand,
     VerifyEmailCommand,
 };
+use crate::core::context::request_context::RequestContext;
 use crate::domain::business_rule_interface::BusinessRuleInterface;
 use crate::domain::user;
 use crate::domain::user::entity::{CreateUserProps, RegisterUserProps, UpdateUserProps};
@@ -222,7 +223,15 @@ impl UserServiceInterface for UserService {
         Ok(true)
     }
 
-    async fn create_user(&self, command: AdminCreateUserCommand) -> UseCaseResult<UserResponseDto> {
+    async fn create_user(
+        &self,
+        ctx: RequestContext,
+        command: AdminCreateUserCommand,
+    ) -> UseCaseResult<UserResponseDto> {
+        if !ctx.is_admin() {
+            return Err(UseCaseError::PermissionDenied);
+        }
+
         // Database: Check email uniqueness
         let email_is_unique = !self
             .user_repo
@@ -308,9 +317,14 @@ impl UserServiceInterface for UserService {
 
     async fn update_user(
         &self,
+        ctx: RequestContext,
         id: i64,
         command: UpdateUserCommand,
     ) -> UseCaseResult<UserResponseDto> {
+        if !ctx.is_admin() && ctx.user_id().is_some_and(|uid| uid != id) {
+            return Err(UseCaseError::PermissionDenied);
+        }
+
         // Find user by email
         let existing_user_opt = self
             .user_repo
@@ -391,8 +405,12 @@ impl UserServiceInterface for UserService {
         })
     }
 
-    async fn get_profile(&self, user_id: i64) -> UseCaseResult<UserWithAddressesDto> {
-        let cache_key = Self::profile_cache_key(user_id);
+    async fn get_my_profile(&self, ctx: RequestContext) -> UseCaseResult<UserWithAddressesDto> {
+        let (id, _) = ctx
+            .require_user()
+            .map_err(|_| UseCaseError::PermissionDenied)?;
+
+        let cache_key = Self::profile_cache_key(id);
 
         // 1) Try Redis cache
         if let Some(dto) =
@@ -404,10 +422,10 @@ impl UserServiceInterface for UserService {
         // 2) Load from DB via repository (domain read model)
         let profile = self
             .user_repo
-            .get_user_with_addresses(user_id)
+            .get_user_with_addresses(id)
             .await
             .map_err(|e| UseCaseError::Unexpected(e.to_string()))?
-            .ok_or_else(|| UseCaseError::NotFound(format!("User not found by id {}", user_id)))?;
+            .ok_or_else(|| UseCaseError::NotFound(format!("User not found by id {}", id)))?;
 
         // 3) Domain -> DTO (using your existing From mappers)
         let dto = UserWithAddressesDto {
@@ -423,7 +441,28 @@ impl UserServiceInterface for UserService {
         Ok(dto)
     }
 
-    async fn delete_user(&self, id: i64) -> UseCaseResult<bool> {
+    async fn get_user_by_id(&self, ctx: RequestContext, id: i64) -> UseCaseResult<UserDto> {
+        if !ctx.is_admin() && ctx.user_id().is_some_and(|uid| uid != id) {
+            return Err(UseCaseError::PermissionDenied);
+        }
+
+        let cache_key = Self::profile_cache_key(id);
+        let existing_user_opt = self
+            .user_repo
+            .find_user_by_id(id)
+            .await
+            .map_err(|e| UseCaseError::Unexpected(e.to_string()))?;
+        let existing_user = existing_user_opt
+            .ok_or_else(|| UseCaseError::NotFound(format!("User with id {} not found", id)))?;
+
+        Ok(existing_user.into())
+    }
+
+    async fn delete_user(&self, ctx: RequestContext, id: i64) -> UseCaseResult<bool> {
+        if !ctx.is_admin() && ctx.user_id().is_some_and(|uid| uid != id) {
+            return Err(UseCaseError::PermissionDenied);
+        }
+
         // Database: Soft delete
         self.user_repo
             .delete_user(id)
@@ -473,9 +512,13 @@ impl UserServiceInterface for UserService {
         Ok(users.into_iter().map(Into::into).collect())
     }
 
-    async fn logout(&self, user_id: i64) -> UseCaseResult<bool> {
+    async fn logout(&self, ctx: RequestContext) -> UseCaseResult<bool> {
+        let (id, _) = ctx
+            .require_user()
+            .map_err(|_| UseCaseError::PermissionDenied)?;
+
         // External service: Clear Redis cache (session invalidation)
-        let cache_key = Self::profile_cache_key(user_id);
+        let cache_key = Self::profile_cache_key(id);
 
         if let Err(err) = self.cache.del(&cache_key).await {
             tracing::warn!("cache del failed key={}: {}", cache_key, err);
