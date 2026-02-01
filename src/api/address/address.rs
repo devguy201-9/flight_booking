@@ -17,7 +17,7 @@ pub struct UserIdQuery {
 
 #[utoipa::path(
     post,
-    path = "/addresses",
+    path = "",
     tags = ["address"],
     request_body = CreateAddressRequest,
     responses(
@@ -46,7 +46,7 @@ pub async fn controller_create_address(
 
 #[utoipa::path(
     put,
-    path = "/addresses/{id}",
+    path = "/{id}",
     tags = ["address"],
     request_body = UpdateAddressRequest,
     params(
@@ -84,7 +84,7 @@ pub async fn controller_update_address(
 
 #[utoipa::path(
     get,
-    path = "/addresses/{id}",
+    path = "/{id}",
     tags = ["address"],
     params(
         ("id" = i64, Path, description = "Address ID")
@@ -115,7 +115,7 @@ pub async fn controller_get_address_by_id(
 
 #[utoipa::path(
     get,
-    path = "/addresses",
+    path = "",
     tags = ["address"],
     params(
         ("user_id" = i64, Query, description = "User ID to get addresses for")
@@ -150,7 +150,7 @@ pub async fn controller_get_addresses_by_user_id(
 
 #[utoipa::path(
     delete,
-    path = "/addresses/{id}",
+    path = "/{id}",
     tags = ["address"],
     params(
         ("id" = i64, Path, description = "Address ID")

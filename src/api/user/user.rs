@@ -86,7 +86,7 @@ pub async fn controller_logout(
 
 #[utoipa::path(
     post,
-    path = "/auth/register",
+    path = "/register",
     tags = ["user"],
     request_body = RegisterUserRequest,
     responses(
@@ -116,7 +116,7 @@ pub async fn controller_register_user(
 
 #[utoipa::path(
     post,
-    path = "/auth/verify-email",
+    path = "/verify-email",
     tags = ["user"],
     request_body = VerifyEmailRequest,
     responses(
@@ -142,7 +142,7 @@ pub async fn controller_verify_email(
 
 #[utoipa::path(
     post,
-    path = "/auth/resend-verification",
+    path = "/resend-verification",
     tags = ["user"],
     request_body = ResendVerificationEmailRequest,
     responses(
@@ -172,7 +172,7 @@ pub async fn controller_resend_verification_email(
 
 #[utoipa::path(
     post,
-    path = "/users",
+    path = "",
     tags = ["user"],
     request_body = AdminCreateUserRequest,
     responses(
@@ -201,7 +201,7 @@ pub async fn controller_create_user(
 
 #[utoipa::path(
     put,
-    path = "/users/{id}",
+    path = "/{id}",
     tags = ["user"],
     request_body = UpdateUserRequest,
     params(
@@ -235,7 +235,7 @@ pub async fn controller_update_user(
 
 #[utoipa::path(
     get,
-    path = "/users/{id}",
+    path = "/{id}",
     tags = ["user"],
     params(
         ("id" = i64, Path, description = "User ID")
@@ -265,7 +265,7 @@ pub async fn controller_get_user_by_id(
 
 #[utoipa::path(
     get,
-    path = "/users",
+    path = "",
     tags = ["user"],
     params(
         ("page" = Option<u64>, Query, description = "Page number (default: 0)"),
@@ -304,7 +304,7 @@ pub async fn controller_list_users(
 
 #[utoipa::path(
     delete,
-    path = "/users/{id}",
+    path = "/{id}",
     tags = ["user"],
     params(
         ("id" = i64, Path, description = "User ID")

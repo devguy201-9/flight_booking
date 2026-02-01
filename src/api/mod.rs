@@ -22,7 +22,9 @@ pub fn build_routes() -> AppRoutes {
 
     let public_auth_routes = OpenApiRouter::new()
         .routes(routes!(api::auth::auth::controller_login_by_email))
-        .routes(routes!(api::auth::auth::controller_refresh_token))
+        .routes(routes!(api::auth::auth::controller_refresh_token));
+
+    let public_user_routes = OpenApiRouter::new()
         .routes(routes!(api::user::user::controller_register_user))
         .routes(routes!(api::user::user::controller_verify_email))
         .routes(routes!(
@@ -51,6 +53,7 @@ pub fn build_routes() -> AppRoutes {
 
     let public = OpenApiRouter::new()
         .nest("/v1/server", server_routes)
+        .nest("/api/v1/users", public_user_routes)
         .nest("/api/v1/auth", public_auth_routes);
 
     let protected = OpenApiRouter::new()
