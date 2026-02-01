@@ -1,7 +1,7 @@
 use crate::application::auth::auth_command::{LoginByEmailCommand, RefreshTokenCommand};
-use crate::application::auth::dto::authenticated_user::AuthenticatedUser;
+use crate::application::auth::view::authenticated_user::AuthenticatedUser;
 use crate::application::auth::password_hasher::PasswordHasher;
-use crate::application::auth::token_service::{LoginResultDto, TokenService, UserInfoDto};
+use crate::application::auth::token_service::{LoginResultView, TokenService, UserInfoView};
 use crate::application::auth::use_case::auth_service_interface::AuthServiceInterface;
 use crate::application::common::cache_interface::CacheInterface;
 use crate::application::common::event_publisher::UserEventPublisher;
@@ -62,7 +62,7 @@ impl AuthService {
 
 #[async_trait::async_trait]
 impl AuthServiceInterface for AuthService {
-    async fn login_by_email(&self, command: LoginByEmailCommand) -> UseCaseResult<LoginResultDto> {
+    async fn login_by_email(&self, command: LoginByEmailCommand) -> UseCaseResult<LoginResultView> {
         // Validate command
         command.validate().map_err(|e| {
             UseCaseError::Domain(DomainError::User(UserDomainError::Validation {
@@ -156,23 +156,24 @@ impl AuthServiceInterface for AuthService {
             log::error!("publish_user_logged_in failed: {e:?}");
         }
 
-        // Create UserInfo for response
-        let user_info = UserInfoDto {
+        // Create UserInfo for view
+        let user_info = UserInfoView {
             id: user.id,
             email: user.email.clone(),
             full_name: format!("{} {}", user.first_name, user.last_name),
             role: match user.role {
                 user::entity::UserRole::Customer => "customer".to_string(),
                 user::entity::UserRole::Admin => "admin".to_string(),
+                user::entity::UserRole::Staff => "staff".to_string(),
             },
         };
-        Ok(LoginResultDto {
+        Ok(LoginResultView {
             tokens: token_pair,
             user: user_info,
         })
     }
 
-    async fn refresh_token(&self, command: RefreshTokenCommand) -> UseCaseResult<LoginResultDto> {
+    async fn refresh_token(&self, command: RefreshTokenCommand) -> UseCaseResult<LoginResultView> {
         // Validate command
         command.validate().map_err(|e| {
             UseCaseError::Domain(DomainError::User(UserDomainError::Validation {
@@ -217,15 +218,15 @@ impl AuthServiceInterface for AuthService {
             .generate_tokens(claims.user_id, claims.session_id, claims.role.as_str())
             .map_err(|e| UseCaseError::Unexpected(e.to_string()))?;
 
-        // Create UserInfo for response
-        let user_info = UserInfoDto {
+        // Create UserInfo for view
+        let user_info = UserInfoView {
             id: user.id,
             email: user.email.clone(),
             full_name: format!("{} {}", user.first_name, user.last_name),
             role: user.role.as_str().to_string(),
         };
 
-        Ok(LoginResultDto {
+        Ok(LoginResultView {
             tokens: token_pair,
             user: user_info,
         })

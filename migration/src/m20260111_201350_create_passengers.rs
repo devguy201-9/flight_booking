@@ -13,7 +13,13 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Passengers::Table)
                     .if_not_exists()
-                    .col(pk_auto(Passengers::Id))
+                    .col(
+                        ColumnDef::new(Passengers::Id)
+                            .big_integer()
+                            .not_null()
+                            .auto_increment()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(Passengers::BookingId).integer().not_null())
                     .col(
                         ColumnDef::new(Passengers::PassengerType)
@@ -58,12 +64,16 @@ impl MigrationTrait for Migration {
                             .to(Bookings::Table, Bookings::Id)
                             .on_delete(ForeignKeyAction::Cascade),
                     )
-                    .index(
-                        Index::create()
-                            .name("idx_passengers_booking_id")
-                            .table(Passengers::Table)
-                            .col(Passengers::BookingId),
-                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_passengers_booking_id")
+                    .table(Passengers::Table)
+                    .col(Passengers::BookingId)
                     .to_owned(),
             )
             .await?;

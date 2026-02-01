@@ -1,4 +1,4 @@
-use crate::application::address::dto::address_dto::AddressDto;
+use crate::application::address::view::address_view::AddressView;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -16,8 +16,8 @@ pub struct AddressSerializer {
     pub postal_code: Option<String>,
     pub phone_number: Option<String>,
 }
-impl From<AddressDto> for AddressSerializer {
-    fn from(value: AddressDto) -> Self {
+impl From<AddressView> for AddressSerializer {
+    fn from(value: AddressView) -> Self {
         Self {
             id: value.id,
             title: value.title,

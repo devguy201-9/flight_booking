@@ -1,3 +1,4 @@
+use crate::helpers::exec_unprepared;
 use sea_orm_migration::prelude::*;
 
 #[derive(DeriveMigrationName)]
@@ -6,116 +7,86 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        // Add failed_login_attempts field
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(Users::Table)
-                    .add_column(
-                        ColumnDef::new(Users::FailedLoginAttempts)
-                            .integer()
-                            .not_null()
-                            .default(0)
-                    )
-                    .to_owned(),
-            )
-            .await?;
+        // failed_login_attempts
+        exec_unprepared(
+            manager,
+            r#"
+            ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS failed_login_attempts integer NOT NULL DEFAULT 0;
+            "#,
+        )
+        .await?;
 
-        // Add last_failed_login_at field
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(Users::Table)
-                    .add_column(
-                        ColumnDef::new(Users::LastFailedLoginAt)
-                            .timestamp()
-                            .null()
-                    )
-                    .to_owned(),
-            )
-            .await?;
+        // last_failed_login_at
+        exec_unprepared(
+            manager,
+            r#"
+            ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS last_failed_login_at timestamp NULL;
+            "#,
+        )
+        .await?;
 
-        // Add account_locked_until field
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(Users::Table)
-                    .add_column(
-                        ColumnDef::new(Users::AccountLockedUntil)
-                            .timestamp()
-                            .null()
-                    )
-                    .to_owned(),
-            )
-            .await?;
+        // account_locked_until
+        exec_unprepared(
+            manager,
+            r#"
+            ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS account_locked_until timestamp NULL;
+            "#,
+        )
+        .await?;
 
-        // Add last_login_at field
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(Users::Table)
-                    .add_column(
-                        ColumnDef::new(Users::LastLoginAt)
-                            .timestamp()
-                            .null()
-                    )
-                    .to_owned(),
-            )
-            .await?;
+        // last_login_at
+        exec_unprepared(
+            manager,
+            r#"
+            ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS last_login_at timestamp NULL;
+            "#,
+        )
+        .await?;
 
         Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        // Drop last_login_at field
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(Users::Table)
-                    .drop_column(Users::LastLoginAt)
-                    .to_owned(),
-            )
-            .await?;
+        exec_unprepared(
+            manager,
+            r#"
+            ALTER TABLE users
+            DROP COLUMN IF EXISTS last_login_at;
+            "#,
+        )
+        .await?;
 
-        // Drop account_locked_until field
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(Users::Table)
-                    .drop_column(Users::AccountLockedUntil)
-                    .to_owned(),
-            )
-            .await?;
+        exec_unprepared(
+            manager,
+            r#"
+            ALTER TABLE users
+            DROP COLUMN IF EXISTS account_locked_until;
+            "#,
+        )
+        .await?;
 
-        // Drop last_failed_login_at field
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(Users::Table)
-                    .drop_column(Users::LastFailedLoginAt)
-                    .to_owned(),
-            )
-            .await?;
+        exec_unprepared(
+            manager,
+            r#"
+            ALTER TABLE users
+            DROP COLUMN IF EXISTS last_failed_login_at;
+            "#,
+        )
+        .await?;
 
-        // Drop failed_login_attempts field
-        manager
-            .alter_table(
-                Table::alter()
-                    .table(Users::Table)
-                    .drop_column(Users::FailedLoginAttempts)
-                    .to_owned(),
-            )
-            .await?;
+        exec_unprepared(
+            manager,
+            r#"
+            ALTER TABLE users
+            DROP COLUMN IF EXISTS failed_login_attempts;
+            "#,
+        )
+        .await?;
 
         Ok(())
     }
-}
-
-#[derive(DeriveIden)]
-enum Users {
-    Table,
-    FailedLoginAttempts,
-    LastFailedLoginAt,
-    AccountLockedUntil,
-    LastLoginAt,
 }

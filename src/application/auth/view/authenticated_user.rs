@@ -4,11 +4,11 @@ use uuid::Uuid;
 pub struct AuthenticatedUser {
     pub user_id: i64,
     pub session_id: Uuid,
-    pub role: UserRoleDto,
+    pub role: UserRoleView,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum UserRoleDto {
+pub enum UserRoleView {
     Admin,
     Customer,
     Staff,

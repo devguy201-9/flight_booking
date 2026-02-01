@@ -2,7 +2,7 @@ use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UserDto {
+pub struct UserView {
     pub id: i64,
     pub avatar: Option<String>,
     pub first_name: String,
@@ -16,7 +16,7 @@ pub struct UserDto {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct UserResponseDto {
+pub struct UserResponseView {
     pub user_id: String,
     pub email: String,
     pub message: String,

@@ -14,7 +14,13 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Bookings::Table)
                     .if_not_exists()
-                    .col(pk_auto(Bookings::Id))
+                    .col(
+                        ColumnDef::new(Bookings::Id)
+                            .big_integer()
+                            .not_null()
+                            .auto_increment()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(Bookings::BookingCode).string().not_null())
                     .col(ColumnDef::new(Bookings::UserId).integer().not_null())
                     .col(ColumnDef::new(Bookings::FlightId).integer().not_null())
@@ -80,18 +86,26 @@ impl MigrationTrait for Migration {
                             .col(Bookings::BookingCode)
                             .unique(),
                     )
-                    .index(
-                        Index::create()
-                            .name("idx_bookings_user_id")
-                            .table(Bookings::Table)
-                            .col(Bookings::UserId),
-                    )
-                    .index(
-                        Index::create()
-                            .name("idx_bookings_flight_id")
-                            .table(Bookings::Table)
-                            .col(Bookings::FlightId),
-                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_bookings_user_id")
+                    .table(Bookings::Table)
+                    .col(Bookings::UserId)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_bookings_flight_id")
+                    .table(Bookings::Table)
+                    .col(Bookings::FlightId)
                     .to_owned(),
             )
             .await?;

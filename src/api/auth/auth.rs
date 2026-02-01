@@ -2,7 +2,7 @@ use crate::application::auth::auth_command::{LoginByEmailCommand, RefreshTokenCo
 use crate::core::app_state::AppState;
 use crate::core::context::request_context::RequestContext;
 use crate::core::response::common::{ClientResponseError, EntityResponse};
-use crate::presentation::auth::auth::LoginResponse;
+use crate::presentation::auth::auth_serializer::LoginResponseSerializer;
 use crate::presentation::auth::auth_request::{LoginByEmailRequest, RefreshTokenRequest};
 use crate::presentation::http::ApiResult;
 use axum::extract::State;
@@ -11,11 +11,11 @@ use log::error;
 
 #[utoipa::path(
     post,
-    path = "/api/v1/auth/login",
+    path = "/login",
     request_body = LoginByEmailRequest,
     tags = ["auth"],
     responses(
-        (status = 200, description = "Success login", body = LoginResponse),
+        (status = 200, description = "Success login", body = LoginResponseSerializer),
         (status = 400, description = "Invalid data input", body = ClientResponseError),
         (status = 404, description = "Account not found", body = ClientResponseError),
         (status = 500, description = "Internal server error", body = ClientResponseError)
@@ -24,7 +24,7 @@ use log::error;
 pub async fn controller_login_by_email(
     State(state): State<AppState>,
     Json(req): Json<LoginByEmailRequest>,
-) -> ApiResult<Json<EntityResponse<LoginResponse>>> {
+) -> ApiResult<Json<EntityResponse<LoginResponseSerializer>>> {
     log::info!("Login request received");
 
     let command: LoginByEmailCommand = req.into();
@@ -32,7 +32,7 @@ pub async fn controller_login_by_email(
     // Call application service
     let result = state.auth_service.login_by_email(command).await?;
 
-    // Map DTO → Response
+    // Map model View → Response
     Ok(Json(EntityResponse {
         message: "Login successfully.".to_string(),
         data: Some(result.into()),
@@ -42,11 +42,11 @@ pub async fn controller_login_by_email(
 
 #[utoipa::path(
     post,
-    path = "/api/v1/auth/refresh",
+    path = "/refresh",
     request_body = RefreshTokenRequest,
     tags = ["auth"],
     responses(
-        (status = 200, description = "Token refreshed successfully", body = EntityResponse<LoginResponse>),
+        (status = 200, description = "Token refreshed successfully", body = EntityResponse<LoginResponseSerializer>),
         (status = 401, description = "Invalid or expired refresh token", body = ClientResponseError),
         (status = 500, description = "Internal server error", body = ClientResponseError)
     )
@@ -54,7 +54,7 @@ pub async fn controller_login_by_email(
 pub async fn controller_refresh_token(
     State(state): State<AppState>,
     Json(req): Json<RefreshTokenRequest>,
-) -> ApiResult<Json<EntityResponse<LoginResponse>>> {
+) -> ApiResult<Json<EntityResponse<LoginResponseSerializer>>> {
     log::info!("Refreshing token");
 
     // Request → Command
@@ -63,7 +63,7 @@ pub async fn controller_refresh_token(
     // Call application service
     let result = state.auth_service.refresh_token(command).await?;
 
-    // DTO → Response
+    // Model View → Response
     Ok(Json(EntityResponse {
         message: "Token refreshed successfully.".to_string(),
         data: Some(result.into()),
@@ -72,7 +72,7 @@ pub async fn controller_refresh_token(
 }
 #[utoipa::path(
     post,
-    path = "/api/v1/auth/logout",
+    path = "/logout",
     tags = ["auth"],
     responses(
         (status = 200, description = "Logout successfully", body = EntityResponse<bool>),

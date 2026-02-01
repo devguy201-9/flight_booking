@@ -1,7 +1,7 @@
-use crate::application::address::dto::address_dto::AddressDto;
+use crate::application::address::view::address_view::AddressView;
 use crate::domain::address::entity::{Address, AddressTypeDomain};
 
-impl From<Address> for AddressDto {
+impl From<Address> for AddressView {
     fn from(a: Address) -> Self {
         Self {
             id: a.id,

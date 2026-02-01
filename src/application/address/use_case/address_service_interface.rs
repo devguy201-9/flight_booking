@@ -1,5 +1,5 @@
 use crate::application::address::address_command::{CreateAddressCommand, UpdateAddressCommand};
-use crate::application::address::dto::address_dto::AddressDto;
+use crate::application::address::view::address_view::AddressView;
 use crate::application::common::use_case_error::UseCaseResult;
 use crate::core::context::request_context::RequestContext;
 
@@ -18,7 +18,7 @@ pub trait AddressServiceInterface: Send + Sync {
         command: UpdateAddressCommand,
     ) -> UseCaseResult<bool>;
 
-    async fn get_address_by_id(&self, ctx: RequestContext, id: i64) -> UseCaseResult<AddressDto>;
+    async fn get_address_by_id(&self, ctx: RequestContext, id: i64) -> UseCaseResult<AddressView>;
 
     async fn delete_address(
         &self,
@@ -31,5 +31,5 @@ pub trait AddressServiceInterface: Send + Sync {
         &self,
         ctx: RequestContext,
         user_id: i64,
-    ) -> UseCaseResult<Vec<AddressDto>>;
+    ) -> UseCaseResult<Vec<AddressView>>;
 }

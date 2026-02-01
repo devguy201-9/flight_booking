@@ -12,7 +12,13 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Users::Table)
                     .if_not_exists()
-                    .col(pk_auto(Users::Id))
+                    .col(
+                        ColumnDef::new(Users::Id)
+                            .big_integer()
+                            .not_null()
+                            .auto_increment()
+                            .primary_key(),
+                    )
                     .col(string_null(Users::Avatar))
                     .col(string(Users::FirstName))
                     .col(string(Users::LastName))

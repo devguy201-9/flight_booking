@@ -17,7 +17,7 @@ pub struct UserIdQuery {
 
 #[utoipa::path(
     post,
-    path = "api/v1/addresses",
+    path = "/addresses",
     tags = ["address"],
     request_body = CreateAddressRequest,
     responses(
@@ -46,7 +46,7 @@ pub async fn controller_create_address(
 
 #[utoipa::path(
     put,
-    path = "api/v1/addresses/{id}",
+    path = "/addresses/{id}",
     tags = ["address"],
     request_body = UpdateAddressRequest,
     params(
@@ -84,7 +84,7 @@ pub async fn controller_update_address(
 
 #[utoipa::path(
     get,
-    path = "api/v1/addresses/{id}",
+    path = "/addresses/{id}",
     tags = ["address"],
     params(
         ("id" = i64, Path, description = "Address ID")
@@ -104,18 +104,18 @@ pub async fn controller_get_address_by_id(
 ) -> ApiResult<Json<EntityResponse<AddressSerializer>>> {
     log::info!("Getting address with id: {}", id);
 
-    let dto = state.address_service.get_address_by_id(ctx, id).await?;
+    let model_view = state.address_service.get_address_by_id(ctx, id).await?;
 
     Ok(Json(EntityResponse {
         message: "Address retrieved successfully.".to_string(),
-        data: Some(dto.into()),
+        data: Some(model_view.into()),
         total: 1,
     }))
 }
 
 #[utoipa::path(
     get,
-    path = "api/v1/addresses",
+    path = "/addresses",
     tags = ["address"],
     params(
         ("user_id" = i64, Query, description = "User ID to get addresses for")
@@ -150,7 +150,7 @@ pub async fn controller_get_addresses_by_user_id(
 
 #[utoipa::path(
     delete,
-    path = "api/v1/addresses/{id}",
+    path = "/addresses/{id}",
     tags = ["address"],
     params(
         ("id" = i64, Path, description = "Address ID")

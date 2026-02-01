@@ -1,2 +1,2 @@
 pub mod user_with_addresses;
-pub mod user_dto;
+pub mod user_view;

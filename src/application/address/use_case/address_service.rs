@@ -1,5 +1,5 @@
 use crate::application::address::address_command::{CreateAddressCommand, UpdateAddressCommand};
-use crate::application::address::dto::address_dto::AddressDto;
+use crate::application::address::view::address_view::AddressView;
 use crate::application::address::use_case::address_service_interface::AddressServiceInterface;
 use crate::application::common::cache_helper::{cache_get_json, cache_set_json};
 use crate::application::common::cache_interface::CacheInterface;
@@ -179,12 +179,12 @@ impl AddressServiceInterface for AddressService {
         Ok(true)
     }
 
-    async fn get_address_by_id(&self, ctx: RequestContext, id: i64) -> UseCaseResult<AddressDto> {
+    async fn get_address_by_id(&self, ctx: RequestContext, id: i64) -> UseCaseResult<AddressView> {
         let user_id = ctx.user_id().ok_or(UseCaseError::PermissionDenied)?;
         let cache_key = Self::address_cache_key(user_id, id);
 
         // Cache
-        match cache_get_json::<AddressDto>(self.cache.as_ref(), &cache_key).await {
+        match cache_get_json::<AddressView>(self.cache.as_ref(), &cache_key).await {
             Ok(Some(cached)) => return Ok(cached),
             Ok(None) => {} // cache miss
             Err(err) => tracing::warn!("cache get address failed key={}: {}", cache_key, err),
@@ -206,15 +206,15 @@ impl AddressServiceInterface for AddressService {
             return Err(UseCaseError::PermissionDenied);
         }
 
-        // Domain -> DTO
-        let address_dto: AddressDto = existing_address.into();
+        // Domain -> Model View
+        let model_view: AddressView = existing_address.into();
 
         // Cache store
-        if let Err(err) = cache_set_json(self.cache.as_ref(), &cache_key, &address_dto, 86400).await
+        if let Err(err) = cache_set_json(self.cache.as_ref(), &cache_key, &model_view, 86400).await
         {
             tracing::warn!("cache set failed key={}: {}", cache_key, err);
         }
-        Ok(address_dto)
+        Ok(model_view)
     }
 
     async fn delete_address(
@@ -270,7 +270,7 @@ impl AddressServiceInterface for AddressService {
         &self,
         ctx: RequestContext,
         user_id: i64,
-    ) -> UseCaseResult<Vec<AddressDto>> {
+    ) -> UseCaseResult<Vec<AddressView>> {
         let (user_id_check, _) = ctx
             .require_user()
             .map_err(|_| UseCaseError::PermissionDenied)?;
@@ -291,10 +291,10 @@ impl AddressServiceInterface for AddressService {
             .await
             .map_err(|e| UseCaseError::Unexpected(e.to_string()))?;
 
-        let dto: Vec<AddressDto> = addresses.into_iter().map(Into::into).collect();
+        let model_view: Vec<AddressView> = addresses.into_iter().map(Into::into).collect();
 
-        let _ = cache_set_json(self.cache.as_ref(), &cache_key, &dto, 3600).await;
+        let _ = cache_set_json(self.cache.as_ref(), &cache_key, &model_view, 3600).await;
 
-        Ok(dto)
+        Ok(model_view)
     }
 }

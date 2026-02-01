@@ -1,5 +1,5 @@
-use crate::application::user::dto::user_dto::{UserDto, UserResponseDto};
-use crate::application::user::dto::user_with_addresses::UserWithAddressesDto;
+use crate::application::user::view::user_view::{UserView, UserResponseView};
+use crate::application::user::view::user_with_addresses::UserWithAddressesView;
 use crate::presentation::common::sub_address::SubAddressSerializer;
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
@@ -19,8 +19,8 @@ pub struct UserSerializer {
     pub phone_number: Option<String>,
 }
 
-impl From<UserWithAddressesDto> for UserSerializer {
-    fn from(value: UserWithAddressesDto) -> Self {
+impl From<UserWithAddressesView> for UserSerializer {
+    fn from(value: UserWithAddressesView) -> Self {
         let user = value.user;
         Self {
             avatar: user.avatar,
@@ -60,12 +60,12 @@ pub struct UserCreatedSerializer {
     pub email: String,
     pub message: String,
 }
-impl From<UserResponseDto> for UserCreatedSerializer {
-    fn from(dto: UserResponseDto) -> Self {
+impl From<UserResponseView> for UserCreatedSerializer {
+    fn from(model_view: UserResponseView) -> Self {
         Self {
-            user_id: dto.user_id,
-            email: dto.email,
-            message: dto.message,
+            user_id: model_view.user_id,
+            email: model_view.email,
+            message: model_view.message,
         }
     }
 }
@@ -82,18 +82,18 @@ pub struct UserBasicSerializer {
     pub phone_number: Option<String>,
 }
 
-impl From<UserDto> for UserBasicSerializer {
-    fn from(dto: UserDto) -> Self {
+impl From<UserView> for UserBasicSerializer {
+    fn from(model_view: UserView) -> Self {
         Self {
-            avatar: dto.avatar,
-            first_name: dto.first_name,
-            last_name: dto.last_name,
-            username: dto.username,
-            email: dto.email,
-            birth_of_date: dto.birth_of_date,
-            display_name: dto.display_name,
-            gender: dto.gender,
-            phone_number: dto.phone_number,
+            avatar: model_view.avatar,
+            first_name: model_view.first_name,
+            last_name: model_view.last_name,
+            username: model_view.username,
+            email: model_view.email,
+            birth_of_date: model_view.birth_of_date,
+            display_name: model_view.display_name,
+            gender: model_view.gender,
+            phone_number: model_view.phone_number,
         }
     }
 }

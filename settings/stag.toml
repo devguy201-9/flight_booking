@@ -1,26 +1,23 @@
-profile = "local"
+profile = "stag"
 deploy_mode = "mono"
 [server]
-addr = "127.0.0.1"
+addr = "0.0.0.0"
 port = 3001
 
 # ======================
 # Database (Postgres)
 # ======================
 [db]
-host = "127.0.0.1"
-port = 5432
+host = "194.163.40.189"
+port = 5433
 username = "admin"
 password = "admin"
 database_name = "flight_booking"
-max_connections = 50
-database_url = "postgres://admin:admin@localhost:5432/flight_booking"
-
-
+max_connections = 5
+database_url="postgres://admin:admin@postgres-db:5432/flight_booking"
 
 [sentry]
 dsn = ""
-
 
 # ======================
 # Secrets / Keys
@@ -31,27 +28,32 @@ public_access_key = "./static/secret_key/public_access_rsa_key.pem"
 private_refresh_key = "./static/secret_key/private_refresh_rsa_key.pem"
 public_refresh_key = "./static/secret_key/public_refresh_rsa_key.pem"
 
+
+# ======================
+# Redis
+# ======================
 [redis]
 username = "default"
 password = "HEeQ5Sx9OlV7SMBImXFT9yIFA7pBNkhO"
-host = "127.0.0.1"
+host = "194.163.40.189"
 port = 6379
 database_name = "0"
+
 
 # ======================
 # HTTP Client
 # ======================
 [http]
-# milliseconds
 timeout = 1000000
+
 
 # ======================
 # Kafka
 # ======================
 [kafka]
-# Kafka expose ra host qua 9092
-server_url = "localhost:9092"
-group_id = "flight-booking-local"
+# container internal listener
+server_url = "kafka:29092"
+group_id = "flight-booking-stag"
 timeout_ms = 30000
 allow_auto_create_topics = true
 enable_auto_commit = true
@@ -61,7 +63,10 @@ enable_auto_commit = true
 # ======================
 [[gateway.services]]
 name = "booking-service"
-base_url = "http://127.0.0.1:3002"
+
+# service name in compose
+base_url = "http://booking-service:3002"
+
 health_check_path = "/health"
 timeout_secs = 30
 require_auth = true

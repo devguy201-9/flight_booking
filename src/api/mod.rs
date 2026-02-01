@@ -6,12 +6,18 @@ pub mod user;
 use crate::api;
 use crate::core::app_state::AppState;
 use axum::http::{StatusCode, Uri};
+use axum::routing::get;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
+pub struct AppRoutes {
+    pub public: OpenApiRouter<AppState>,
+    pub protected: OpenApiRouter<AppState>,
+}
+
 /// - MONO: application routes only
 /// - MICRO (future): application routes + internal gateway proxy
-pub fn build_routes() -> OpenApiRouter<AppState> {
+pub fn build_routes() -> AppRoutes {
     let server_routes = OpenApiRouter::new().routes(routes!(api::server::health_check));
 
     let public_auth_routes = OpenApiRouter::new()
@@ -43,17 +49,14 @@ pub fn build_routes() -> OpenApiRouter<AppState> {
         ))
         .routes(routes!(api::address::address::controller_delete_address));
 
-    OpenApiRouter::new()
-        // public
-        .merge(server_routes)
-        .nest("/api/v1/auth", public_auth_routes)
-        // protected (middleware sẽ apply ở build_app)
+    let public = OpenApiRouter::new()
+        .nest("/v1/server", server_routes)
+        .nest("/api/v1/auth", public_auth_routes);
+
+    let protected = OpenApiRouter::new()
         .nest("/api/v1/auth", protected_auth_routes)
         .nest("/api/v1/users", user_routes)
-        .nest("/api/v1/addresses", address_routes)
-        .fallback(handler_404)
-}
+        .nest("/api/v1/addresses", address_routes);
 
-pub async fn handler_404(uri: Uri) -> (StatusCode, String) {
-    (StatusCode::NOT_FOUND, format!("No route for {uri}"))
+    AppRoutes { public, protected }
 }

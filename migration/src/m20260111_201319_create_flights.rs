@@ -4,7 +4,6 @@ use sea_orm_migration::{prelude::*, schema::*};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
-
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
@@ -13,7 +12,13 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Flights::Table)
                     .if_not_exists()
-                    .col(pk_auto(Flights::Id))
+                    .col(
+                        ColumnDef::new(Flights::Id)
+                            .big_integer()
+                            .not_null()
+                            .auto_increment()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(Flights::AirlineCode).string().not_null())
                     .col(ColumnDef::new(Flights::FlightNumber).string().not_null())
                     .col(ColumnDef::new(Flights::FlightKey).string().not_null())
@@ -43,7 +48,6 @@ impl MigrationTrait for Migration {
                     .col(timestamp_null(Flights::CheckinCloseAt))
                     .col(timestamp_null(Flights::BoardingTime))
                     .col(string_null(Flights::Gate))
-                    .col(ColumnDef::new(Flights::Gate).string().null())
                     .col(ColumnDef::new(Flights::TotalSeats).integer().not_null())
                     .col(ColumnDef::new(Flights::AvailableSeats).integer().not_null())
                     .col(
@@ -60,6 +64,13 @@ impl MigrationTrait for Migration {
                     )
                     .col(big_integer_null(Flights::CreatedBy))
                     .col(big_integer_null(Flights::UpdatedBy))
+                    .index(
+                        Index::create()
+                            .name("uq_flights_flight_key")
+                            .table(Flights::Table)
+                            .col(Flights::FlightKey)
+                            .unique(),
+                    )
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_flights_origin_airport")
@@ -74,31 +85,36 @@ impl MigrationTrait for Migration {
                             .to(Airports::Table, Airports::Id)
                             .on_delete(ForeignKeyAction::Restrict),
                     )
-                    .index(
-                        Index::create()
-                            .name("uq_flights_flight_key")
-                            .table(Flights::Table)
-                            .col(Flights::FlightKey)
-                            .unique(),
-                    )
-                    .index(
-                        Index::create()
-                            .name("idx_flights_origin")
-                            .table(Flights::Table)
-                            .col(Flights::OriginAirportId),
-                    )
-                    .index(
-                        Index::create()
-                            .name("idx_flights_destination")
-                            .table(Flights::Table)
-                            .col(Flights::DestinationAirportId),
-                    )
-                    .index(
-                        Index::create()
-                            .name("idx_flights_departure_date")
-                            .table(Flights::Table)
-                            .col(Flights::DepartureDate),
-                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_flights_origin")
+                    .table(Flights::Table)
+                    .col(Flights::OriginAirportId)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_flights_destination")
+                    .table(Flights::Table)
+                    .col(Flights::DestinationAirportId)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_flights_departure_date")
+                    .table(Flights::Table)
+                    .col(Flights::DepartureDate)
                     .to_owned(),
             )
             .await?;

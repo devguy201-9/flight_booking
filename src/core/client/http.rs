@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use serde::Serialize;
 
-/// Abstract HTTP response (non leak reqwest)
+/// Abstract HTTP view (non leak reqwest)
 pub struct HttpResponse {
     pub status: u16,
     pub body: String,
@@ -16,7 +16,7 @@ pub enum HttpClientError {
     #[error("timeout")]
     Timeout,
 
-    #[error("invalid response")]
+    #[error("invalid view")]
     InvalidResponse,
 
     #[error("unexpected error: {0}")]
