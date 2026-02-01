@@ -3,8 +3,8 @@ use crate::application::common::cache_helper::{cache_set_json, cache_try_get_jso
 use crate::application::common::cache_interface::CacheInterface;
 use crate::application::common::event_publisher::UserEventPublisher;
 use crate::application::common::use_case_error::{UseCaseError, UseCaseResult};
-use crate::application::user::dto::user_dto::{UserDto, UserResponseDto};
-use crate::application::user::dto::user_with_addresses::UserWithAddressesDto;
+use crate::application::user::view::user_view::{UserView, UserResponseView};
+use crate::application::user::view::user_with_addresses::UserWithAddressesView;
 use crate::application::user::use_case::user_service_interface::UserServiceInterface;
 use crate::application::user::user_command::{
     AdminCreateUserCommand, RegisterUserCommand, ResendVerificationEmailCommand, UpdateUserCommand,
@@ -51,7 +51,7 @@ impl UserService {
 
 #[async_trait::async_trait]
 impl UserServiceInterface for UserService {
-    async fn register_user(&self, command: RegisterUserCommand) -> UseCaseResult<UserResponseDto> {
+    async fn register_user(&self, command: RegisterUserCommand) -> UseCaseResult<UserResponseView> {
         // Business Rule: Email must be unique (database-dependent rule - checked in application layer)
         let email_is_unique = !self
             .user_repo
@@ -131,8 +131,8 @@ impl UserServiceInterface for UserService {
             Err(e) => log::error!("Failed to publish UserRegistered event: {:?}", e),
         }
 
-        // Return response
-        Ok(UserResponseDto {
+        // Return view
+        Ok(UserResponseView {
             user_id: new_id.to_string(),
             email: user.email.clone(),
             message: "Please check your email to verify account".to_string(),
@@ -227,7 +227,7 @@ impl UserServiceInterface for UserService {
         &self,
         ctx: RequestContext,
         command: AdminCreateUserCommand,
-    ) -> UseCaseResult<UserResponseDto> {
+    ) -> UseCaseResult<UserResponseView> {
         if !ctx.is_admin() {
             return Err(UseCaseError::PermissionDenied);
         }
@@ -307,8 +307,8 @@ impl UserServiceInterface for UserService {
             Err(e) => log::error!("Failed to publish UserRegistered event: {:?}", e),
         }
 
-        // Return response
-        Ok(UserResponseDto {
+        // Return view
+        Ok(UserResponseView {
             user_id: new_id.to_string(),
             email: user.email.clone(),
             message: "Please check your email to verify account".to_string(),
@@ -320,7 +320,7 @@ impl UserServiceInterface for UserService {
         ctx: RequestContext,
         id: i64,
         command: UpdateUserCommand,
-    ) -> UseCaseResult<UserResponseDto> {
+    ) -> UseCaseResult<UserResponseView> {
         if !ctx.is_admin() && ctx.user_id().is_some_and(|uid| uid != id) {
             return Err(UseCaseError::PermissionDenied);
         }
@@ -398,14 +398,14 @@ impl UserServiceInterface for UserService {
         // TODO: External service - Kafka event publishing
         // self.kafka_producer.send(...)
 
-        Ok(UserResponseDto {
+        Ok(UserResponseView {
             user_id: existing_user.id.to_string(),
             email: existing_user.email.clone(),
             message: "User information has been updated".to_string(),
         })
     }
 
-    async fn get_my_profile(&self, ctx: RequestContext) -> UseCaseResult<UserWithAddressesDto> {
+    async fn get_my_profile(&self, ctx: RequestContext) -> UseCaseResult<UserWithAddressesView> {
         let (id, _) = ctx
             .require_user()
             .map_err(|_| UseCaseError::PermissionDenied)?;
@@ -413,10 +413,10 @@ impl UserServiceInterface for UserService {
         let cache_key = Self::profile_cache_key(id);
 
         // 1) Try Redis cache
-        if let Some(dto) =
-            cache_try_get_json::<UserWithAddressesDto>(self.cache.as_ref(), &cache_key).await?
+        if let Some(model_view) =
+            cache_try_get_json::<UserWithAddressesView>(self.cache.as_ref(), &cache_key).await?
         {
-            return Ok(dto);
+            return Ok(model_view);
         }
 
         // 2) Load from DB via repository (domain read model)
@@ -427,21 +427,21 @@ impl UserServiceInterface for UserService {
             .map_err(|e| UseCaseError::Unexpected(e.to_string()))?
             .ok_or_else(|| UseCaseError::NotFound(format!("User not found by id {}", id)))?;
 
-        // 3) Domain -> DTO (using your existing From mappers)
-        let dto = UserWithAddressesDto {
+        // 3) Domain -> Model View (using your existing From mappers)
+        let model_view = UserWithAddressesView {
             user: profile.user.into(),
             addresses: profile.addresses.into_iter().map(Into::into).collect(),
         };
 
         // 4) Cache to Redis (TTL: 24h)
-        if let Err(err) = cache_set_json(self.cache.as_ref(), &cache_key, &dto, 86400).await {
+        if let Err(err) = cache_set_json(self.cache.as_ref(), &cache_key, &model_view, 86400).await {
             tracing::warn!("cache set profile failed key={}: {}", cache_key, err);
         }
 
-        Ok(dto)
+        Ok(model_view)
     }
 
-    async fn get_user_by_id(&self, ctx: RequestContext, id: i64) -> UseCaseResult<UserDto> {
+    async fn get_user_by_id(&self, ctx: RequestContext, id: i64) -> UseCaseResult<UserView> {
         if !ctx.is_admin() && ctx.user_id().is_some_and(|uid| uid != id) {
             return Err(UseCaseError::PermissionDenied);
         }
@@ -486,7 +486,7 @@ impl UserServiceInterface for UserService {
         &self,
         page: u64,
         page_size: u64,
-    ) -> UseCaseResult<Vec<UserWithAddressesDto>> {
+    ) -> UseCaseResult<Vec<UserWithAddressesView>> {
         let users = self
             .user_repo
             .list_users_with_addresses(page, page_size)
@@ -495,14 +495,14 @@ impl UserServiceInterface for UserService {
 
         Ok(users
             .into_iter()
-            .map(|u| UserWithAddressesDto {
+            .map(|u| UserWithAddressesView {
                 user: u.user.into(),
                 addresses: u.addresses.into_iter().map(Into::into).collect(),
             })
             .collect())
     }
 
-    async fn list_users(&self, page: u64, page_size: u64) -> UseCaseResult<Vec<UserDto>> {
+    async fn list_users(&self, page: u64, page_size: u64) -> UseCaseResult<Vec<UserView>> {
         let users = self
             .user_repo
             .list_users(page, page_size)

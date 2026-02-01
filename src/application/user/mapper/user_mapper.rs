@@ -1,7 +1,7 @@
-use crate::application::user::dto::user_dto::UserDto;
+use crate::application::user::view::user_view::UserView;
 use crate::domain::user::entity::User;
 
-impl From<User> for UserDto {
+impl From<User> for UserView {
     fn from(u: User) -> Self {
         Self {
             id: u.id,

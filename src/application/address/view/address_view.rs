@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AddressDto {
+pub struct AddressView {
     pub id: i64,
     pub title: Option<String>,
     pub address_line_1: String,

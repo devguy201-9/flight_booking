@@ -1,6 +1,6 @@
 use crate::core::context::error::RequestContextError;
 use uuid::Uuid;
-use crate::application::auth::dto::authenticated_user::UserRoleDto;
+use crate::application::auth::view::authenticated_user::UserRoleView;
 
 #[derive(Debug, Clone)]
 pub struct RequestContext {
@@ -86,12 +86,12 @@ impl RequestContext {
         }
     }
 }
-impl From<UserRoleDto> for UserRole {
-    fn from(value: UserRoleDto) -> Self {
+impl From<UserRoleView> for UserRole {
+    fn from(value: UserRoleView) -> Self {
         match value {
-            UserRoleDto::Admin => Self::Admin,
-            UserRoleDto::Customer => Self::Customer,
-            UserRoleDto::Staff => Self::Staff,
+            UserRoleView::Admin => Self::Admin,
+            UserRoleView::Customer => Self::Customer,
+            UserRoleView::Staff => Self::Staff,
         }
     }
 }

@@ -12,7 +12,7 @@ use crate::{
         gateway::proxy::{ProxyClient, check_service_health},
     },
     presentation::{
-        gateway::dto::{GatewayHealth, ServiceHealth},
+        gateway::gateway_serializer::{GatewayHealthSerializer, ServiceHealthSerializer},
         http::error::{AppResult, HttpError},
     },
 };
@@ -25,12 +25,12 @@ use log::info;
     path = "/gateway/health",
     tag = "Gateway",
     responses(
-        (status = 200, description = "Gateway health status", body = EntityResponse<GatewayHealth>)
+        (status = 200, description = "Gateway health status", body = EntityResponse<GatewayHealthSerializer>)
     )
 )]
 pub async fn gateway_health_check(
     State(state): State<AppState>,
-) -> AppResult<Json<EntityResponse<GatewayHealth>>> {
+) -> AppResult<Json<EntityResponse<GatewayHealthSerializer>>> {
     let services = state.gateway_registry.list_all().await;
     let client = reqwest::Client::new();
 
@@ -49,7 +49,7 @@ pub async fn gateway_health_check(
             all_healthy = false;
         }
 
-        service_healths.push(ServiceHealth {
+        service_healths.push(ServiceHealthSerializer {
             name: service.name.clone(),
             base_url: service.base_url.clone(),
             healthy,
@@ -60,7 +60,7 @@ pub async fn gateway_health_check(
 
     Ok(Json(EntityResponse {
         message: "Gateway health check".to_string(),
-        data: Some(GatewayHealth {
+        data: Some(GatewayHealthSerializer {
             status: status.to_string(),
             services: service_healths,
         }),

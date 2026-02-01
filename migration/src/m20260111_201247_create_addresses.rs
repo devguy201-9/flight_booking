@@ -13,7 +13,13 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Addresses::Table)
                     .if_not_exists()
-                    .col(pk_auto(Addresses::Id))
+                    .col(
+                        ColumnDef::new(Addresses::Id)
+                            .big_integer()
+                            .not_null()
+                            .auto_increment()
+                            .primary_key(),
+                    )
                     .col(integer(Addresses::UserId))
                     .col(string_null(Addresses::Title))
                     .col(string(Addresses::AddressLine1))
@@ -69,7 +75,7 @@ impl MigrationTrait for Migration {
             r#"
             ALTER TABLE addresses
                 ADD CONSTRAINT ck_addesses_type
-                CHECK (status IN ('HOME','BILLING','CONTACT','OTHER'));
+                CHECK (type IN ('HOME','BILLING','CONTACT','OTHER'));
             "#,
         )
         .await?;

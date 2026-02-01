@@ -1,9 +1,9 @@
-use crate::api::build_routes;
+use crate::api::{AppRoutes, build_routes};
 use crate::core::app_state::AppState;
 
 use axum::body::Bytes;
 use axum::extract::DefaultBodyLimit;
-use axum::http::{HeaderValue, header};
+use axum::http::{HeaderValue, StatusCode, Uri, header};
 use axum::{Router, middleware};
 
 use std::sync::Arc;
@@ -50,31 +50,39 @@ pub fn build_app(state: AppState) -> Router {
     // --------------------
     // Build routes (MONO vs MICRO handled inside)
     // --------------------
-    let mut routes = build_routes();
+    let AppRoutes {
+        public,
+        mut protected,
+    } = build_routes();
 
+    // MICRO mode: merge gateway routes vào protected
     if state.is_micro() {
-        routes = routes.merge(build_gateway_routes());
+        protected = protected.merge(build_gateway_routes());
     }
 
     let auth_layer = middleware::from_fn_with_state(state.clone(), auth_middleware);
 
-    let (router, api) = routes
+    // Convert OpenApiRouter -> Router
+    let (public_router, mut api_public) = public
         .layer(DefaultBodyLimit::max(1024 * 1024 * 1000))
         .split_for_parts();
 
-    let protected_router = Router::new()
-        // only paths need auth
-        .nest("/api/v1/auth/logout", router.clone())
-        .nest("/api/v1/users", router.clone())
-        .nest("/api/v1/addresses", router)
-        .layer(auth_layer);
+    let (protected_router, api_protected) = protected
+        .layer(DefaultBodyLimit::max(1024 * 1024 * 1000))
+        .split_for_parts();
 
-    let public_router = Router::new()
-        .merge(protected_router)
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", api));
+    api_public.merge(api_protected);
 
-    public_router
+    Router::new()
+        .merge(public_router)
+        .merge(protected_router.layer(auth_layer))
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", api_public))
+        .fallback(handler_404)
         .with_state(state)
         .layer(CorsLayer::permissive())
         .layer(common_middleware)
+}
+
+pub async fn handler_404(uri: Uri) -> (StatusCode, String) {
+    (StatusCode::NOT_FOUND, format!("No route for {uri}"))
 }

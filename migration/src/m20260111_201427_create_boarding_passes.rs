@@ -12,7 +12,13 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(BoardingPasses::Table)
                     .if_not_exists()
-                    .col(pk_auto(BoardingPasses::Id))
+                    .col(
+                        ColumnDef::new(BoardingPasses::Id)
+                            .big_integer()
+                            .not_null()
+                            .auto_increment()
+                            .primary_key(),
+                    )
                     .col(
                         ColumnDef::new(BoardingPasses::CheckinId)
                             .integer()

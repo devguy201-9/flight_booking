@@ -17,10 +17,10 @@ pub struct Migrator;
 impl MigratorTrait for Migrator {
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
         vec![
-            Box::new(m20260111_201209_create_users::Migration),
-            Box::new(m20260111_201247_create_addresses::Migration),
             Box::new(m20260111_201312_create_airports::Migration),
             Box::new(m20260111_201319_create_flights::Migration),
+            Box::new(m20260111_201209_create_users::Migration),
+            Box::new(m20260111_201247_create_addresses::Migration),
             Box::new(m20260111_201326_create_booking::Migration),
             Box::new(m20260111_201350_create_passengers::Migration),
             Box::new(m20260111_201358_create_checkins::Migration),

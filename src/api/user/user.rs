@@ -37,7 +37,7 @@ fn default_page_size() -> u64 {
 
 #[utoipa::path(
     get,
-    path = "/api/v1/me",
+    path = "/me",
     tags = ["user"],
     responses(
         (status = 200, description = "Success get user profile", body =
@@ -62,7 +62,7 @@ pub async fn controller_get_profile(
 
 #[utoipa::path(
     post,
-    path = "/api/v1/logout",
+    path = "/logout",
     tags = ["user"],
     responses(
         (status = 200, description = "Success logout", body = EntityResponse<String>),
@@ -86,7 +86,7 @@ pub async fn controller_logout(
 
 #[utoipa::path(
     post,
-    path = "/api/v1/auth/register",
+    path = "/auth/register",
     tags = ["user"],
     request_body = RegisterUserRequest,
     responses(
@@ -116,7 +116,7 @@ pub async fn controller_register_user(
 
 #[utoipa::path(
     post,
-    path = "/api/v1/auth/verify-email",
+    path = "/auth/verify-email",
     tags = ["user"],
     request_body = VerifyEmailRequest,
     responses(
@@ -142,7 +142,7 @@ pub async fn controller_verify_email(
 
 #[utoipa::path(
     post,
-    path = "/api/v1/auth/resend-verification",
+    path = "/auth/resend-verification",
     tags = ["user"],
     request_body = ResendVerificationEmailRequest,
     responses(
@@ -172,7 +172,7 @@ pub async fn controller_resend_verification_email(
 
 #[utoipa::path(
     post,
-    path = "/api/v1/users",
+    path = "/users",
     tags = ["user"],
     request_body = AdminCreateUserRequest,
     responses(
@@ -201,7 +201,7 @@ pub async fn controller_create_user(
 
 #[utoipa::path(
     put,
-    path = "/api/v1/users/{id}",
+    path = "/users/{id}",
     tags = ["user"],
     request_body = UpdateUserRequest,
     params(
@@ -235,7 +235,7 @@ pub async fn controller_update_user(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/users/{id}",
+    path = "/users/{id}",
     tags = ["user"],
     params(
         ("id" = i64, Path, description = "User ID")
@@ -265,7 +265,7 @@ pub async fn controller_get_user_by_id(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/users",
+    path = "/users",
     tags = ["user"],
     params(
         ("page" = Option<u64>, Query, description = "Page number (default: 0)"),
@@ -304,7 +304,7 @@ pub async fn controller_list_users(
 
 #[utoipa::path(
     delete,
-    path = "/api/v1/users/{id}",
+    path = "/users/{id}",
     tags = ["user"],
     params(
         ("id" = i64, Path, description = "User ID")

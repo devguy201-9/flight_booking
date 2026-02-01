@@ -1,5 +1,5 @@
-use crate::application::auth::dto::authenticated_user::{AuthenticatedUser, UserRoleDto};
-use crate::application::auth::dto::claims::UserClaims;
+use crate::application::auth::view::authenticated_user::{AuthenticatedUser, UserRoleView};
+use crate::application::auth::view::claims::UserClaims;
 use crate::application::auth::token_service::{RefreshClaims, TokenPair, TokenService};
 use crate::application::common::use_case_error::{UseCaseError, UseCaseResult};
 use jsonwebtoken::*;
@@ -66,9 +66,9 @@ impl TokenService for JwtTokenService {
             user_id: token_data.claims.user_id,
             session_id: token_data.claims.sid,
             role: match token_data.claims.role.as_str() {
-                "admin" => UserRoleDto::Admin,
-                "customer" => UserRoleDto::Customer,
-                "staff" => UserRoleDto::Staff,
+                "admin" => UserRoleView::Admin,
+                "customer" => UserRoleView::Customer,
+                "staff" => UserRoleView::Staff,
                 _ => return Err(UseCaseError::PermissionDenied),
             },
         })

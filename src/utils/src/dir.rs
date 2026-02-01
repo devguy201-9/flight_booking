@@ -12,11 +12,8 @@ pub fn get_cargo_project_root() -> std::io::Result<Option<PathBuf>> {
     let current_path = std::env::current_dir()?;
 
     for ancestor in current_path.ancestors() {
-        for dir in std::fs::read_dir(ancestor)? {
-            let dir = dir?;
-            if dir.file_name() == *"Cargo.lock" {
-                return Ok(Some(ancestor.to_path_buf()));
-            }
+        if ancestor.join("Cargo.lock").is_file() {
+            return Ok(Some(ancestor.to_path_buf()));
         }
     }
     Ok(None)

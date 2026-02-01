@@ -3,7 +3,7 @@ use jsonwebtoken::{
 };
 use once_cell::sync::Lazy;
 
-use crate::application::auth::dto::claims::UserClaims;
+use crate::application::auth::view::claims::UserClaims;
 
 pub static DECODE_VALIDATION: Lazy<Validation> = Lazy::new(|| Validation::new(Algorithm::RS256));
 pub static ENCODE_HEADER: Lazy<Header> = Lazy::new(|| Header::new(Algorithm::RS256));

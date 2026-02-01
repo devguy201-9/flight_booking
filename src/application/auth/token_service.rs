@@ -1,4 +1,4 @@
-use crate::application::auth::dto::authenticated_user::AuthenticatedUser;
+use crate::application::auth::view::authenticated_user::AuthenticatedUser;
 use crate::application::common::use_case_error::UseCaseResult;
 use uuid::Uuid;
 
@@ -10,7 +10,7 @@ pub struct TokenPair {
 }
 
 #[derive(Debug, Clone)]
-pub struct UserInfoDto {
+pub struct UserInfoView {
     pub id: i64,
     pub email: String,
     pub full_name: String,
@@ -18,9 +18,9 @@ pub struct UserInfoDto {
 }
 
 #[derive(Debug, Clone)]
-pub struct LoginResultDto {
+pub struct LoginResultView {
     pub tokens: TokenPair,
-    pub user: UserInfoDto,
+    pub user: UserInfoView,
 }
 
 pub struct RefreshClaims {

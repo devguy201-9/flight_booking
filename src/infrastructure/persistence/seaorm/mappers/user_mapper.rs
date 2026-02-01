@@ -1,8 +1,50 @@
 use crate::domain::user::entity::{User, UserRole, UserStatus};
 use crate::infrastructure::persistence::seaorm::entities::user as user_orm;
-use sea_orm::ActiveValue::{Set,NotSet};
+use sea_orm::ActiveValue::{NotSet, Set};
 
 pub struct UserMapper;
+
+impl From<UserStatus> for user_orm::Status {
+    fn from(status: UserStatus) -> Self {
+        match status {
+            UserStatus::Pending => user_orm::Status::PENDING,
+            UserStatus::Active => user_orm::Status::ACTIVE,
+            UserStatus::Suspended => user_orm::Status::SUSPENDED,
+            UserStatus::Deleted => user_orm::Status::DELETED,
+        }
+    }
+}
+
+impl From<UserRole> for user_orm::Role {
+    fn from(role: UserRole) -> Self {
+        match role {
+            UserRole::Customer => user_orm::Role::CUSTOMER,
+            UserRole::Admin => user_orm::Role::ADMIN,
+            UserRole::Staff => user_orm::Role::STAFF,
+        }
+    }
+}
+
+impl From<user_orm::Status> for UserStatus {
+    fn from(status: user_orm::Status) -> Self {
+        match status {
+            user_orm::Status::PENDING => UserStatus::Pending,
+            user_orm::Status::ACTIVE => UserStatus::Active,
+            user_orm::Status::SUSPENDED => UserStatus::Suspended,
+            user_orm::Status::DELETED => UserStatus::Deleted,
+        }
+    }
+}
+
+impl From<user_orm::Role> for UserRole {
+    fn from(role: user_orm::Role) -> Self {
+        match role {
+            user_orm::Role::CUSTOMER => UserRole::Customer,
+            user_orm::Role::ADMIN => UserRole::Admin,
+            user_orm::Role::STAFF => UserRole::Staff,
+        }
+    }
+}
 
 impl UserMapper {
     pub fn domain_to_active_model_create(user: &User) -> user_orm::ActiveModel {
@@ -20,15 +62,8 @@ impl UserMapper {
             display_name: Set(user.display_name.clone()),
             gender: Set(user.gender.clone()),
 
-            status: Set(match user.status {
-                UserStatus::Pending => user_orm::Status::PENDING,
-                UserStatus::Active => user_orm::Status::ACTIVE,
-                UserStatus::Inactive => user_orm::Status::SUSPENDED,
-            }),
-            role: Set(match user.role {
-                UserRole::Customer => user_orm::Role::CUSTOMER,
-                UserRole::Admin => user_orm::Role::ADMIN,
-            }),
+            status: Set(user.status.clone().into()),
+            role: Set(user.role.clone().into()),
 
             is_deleted: Set(user.is_deleted),
 
@@ -62,15 +97,8 @@ impl UserMapper {
             display_name: model.display_name,
             gender: model.gender,
 
-            status: match model.status {
-                user_orm::Status::PENDING => UserStatus::Pending,
-                user_orm::Status::ACTIVE => UserStatus::Active,
-                _ => UserStatus::Inactive,
-            },
-            role: match model.role {
-                user_orm::Role::CUSTOMER => UserRole::Customer,
-                _ => UserRole::Admin,
-            },
+            status: model.status.into(),
+            role: model.role.into(),
             is_deleted: model.is_deleted,
 
             email_verified_at: model.email_verified_at,
@@ -109,17 +137,8 @@ impl UserMapper {
         active.gender = Set(user.gender.clone());
 
         // state
-        active.status = Set(match user.status {
-            UserStatus::Pending => user_orm::Status::PENDING,
-            UserStatus::Active => user_orm::Status::ACTIVE,
-            UserStatus::Inactive => user_orm::Status::SUSPENDED,
-        });
-
-        active.role = Set(match user.role {
-            UserRole::Customer => user_orm::Role::CUSTOMER,
-            UserRole::Admin => user_orm::Role::ADMIN,
-        });
-
+        active.status = Set(user.status.clone().into());
+        active.role = Set(user.role.clone().into());
         active.is_deleted = Set(user.is_deleted);
 
         // verification

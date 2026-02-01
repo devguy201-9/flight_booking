@@ -176,13 +176,15 @@ pub struct User {
 pub enum UserStatus {
     Pending,
     Active,
-    Inactive,
+    Suspended,
+    Deleted,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UserRole {
     Customer,
     Admin,
+    Staff,
 }
 
 impl UserRole {
@@ -190,6 +192,7 @@ impl UserRole {
         match self {
             UserRole::Customer => "customer",
             UserRole::Admin => "admin",
+            UserRole::Staff => "staff",
         }
     }
 }

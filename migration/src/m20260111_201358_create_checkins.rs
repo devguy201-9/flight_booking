@@ -14,7 +14,13 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Checkins::Table)
                     .if_not_exists()
-                    .col(pk_auto(Checkins::Id))
+                    .col(
+                        ColumnDef::new(Checkins::Id)
+                            .big_integer()
+                            .not_null()
+                            .auto_increment()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(Checkins::BookingId).integer().not_null())
                     .col(ColumnDef::new(Checkins::PassengerId).integer().not_null())
                     .col(string_null(Checkins::SeatNo))
@@ -71,24 +77,32 @@ impl MigrationTrait for Migration {
                     )
                     .index(
                         Index::create()
-                            .name("idx_checkins_booking_id")
-                            .table(Checkins::Table)
-                            .col(Checkins::BookingId),
-                    )
-                    .index(
-                        Index::create()
-                            .name("idx_checkins_passenger_id")
-                            .table(Checkins::Table)
-                            .col(Checkins::PassengerId),
-                    )
-                    .index(
-                        Index::create()
                             .name("uq_checkins_booking_passenger")
                             .table(Checkins::Table)
                             .col(Checkins::BookingId)
                             .col(Checkins::PassengerId)
                             .unique(),
                     )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_checkins_booking_id")
+                    .table(Checkins::Table)
+                    .col(Checkins::BookingId)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_checkins_passenger_id")
+                    .table(Checkins::Table)
+                    .col(Checkins::PassengerId)
                     .to_owned(),
             )
             .await?;

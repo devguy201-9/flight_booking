@@ -11,7 +11,13 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Airports::Table)
                     .if_not_exists()
-                    .col(pk_auto(Airports::Id))
+                    .col(
+                        ColumnDef::new(Airports::Id)
+                            .big_integer()
+                            .not_null()
+                            .auto_increment()
+                            .primary_key(),
+                    )
                     .col(ColumnDef::new(Airports::IataCode).string().not_null())
                     .col(string_null(Airports::IcaoCode))
                     .col(ColumnDef::new(Airports::Name).string().not_null())

@@ -153,7 +153,7 @@ impl ProxyClient {
         let headers = response.headers().clone();
 
         let body_bytes = response.bytes().await.map_err(|e| {
-            TechnicalError::Unexpected(format!("Failed to read response body: {}", e))
+            TechnicalError::Unexpected(format!("Failed to read view body: {}", e))
         })?;
 
         let mut builder = Response::builder().status(status);
@@ -168,7 +168,7 @@ impl ProxyClient {
 
         builder
             .body(Body::from(body_bytes))
-            .map_err(|e| TechnicalError::Unexpected(format!("Failed to build response: {}", e)))
+            .map_err(|e| TechnicalError::Unexpected(format!("Failed to build view: {}", e)))
     }
 
     fn filter_headers(&self, headers: &HeaderMap) -> HeaderMap {

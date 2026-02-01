@@ -2,14 +2,14 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct ServiceHealth {
+pub struct ServiceHealthSerializer {
     pub name: String,
     pub base_url: String,
     pub healthy: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct GatewayHealth {
+pub struct GatewayHealthSerializer {
     pub status: String,
-    pub services: Vec<ServiceHealth>,
+    pub services: Vec<ServiceHealthSerializer>,
 }

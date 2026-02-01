@@ -28,12 +28,17 @@ pub struct AppConfig {
 impl AppConfig {
     pub fn read(profile: Profile) -> Result<Self, config::ConfigError> {
         let config_dir = get_settings_dir()?;
-        let config = config::Config::builder()
+        let mut config: AppConfig = config::Config::builder()
             .add_source(config::File::from(config_dir.join(profile.filename())))
+            .add_source(Environment::default())
             .add_source(profile.env_source())
-            .build()?;
-        log::info!("Successfully read gateway profile: {profile}.");
-        config.try_deserialize()
+            .build()?
+            .try_deserialize()?;
+
+        config.profile = profile;
+
+        log::info!("Loaded config profile: {}", profile);
+        Ok(config)
     }
 
     pub fn get_sentry_dsn(&self) -> &str {
@@ -75,9 +80,6 @@ pub enum Profile {
     #[serde(rename = "prod")]
     #[strum(serialize = "prod")]
     Prod,
-    #[serde(rename = "test")]
-    #[strum(serialize = "test")]
-    Test,
     #[serde(rename = "local")]
     #[strum(serialize = "local")]
     Local,
