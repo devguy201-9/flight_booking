@@ -77,7 +77,7 @@ impl UserMapper {
             last_failed_login_at: Set(user.last_failed_login_at),
             account_locked_until: Set(user.account_locked_until),
             last_login_at: Set(user.last_login_at),
-
+            version: Set(user.version),
             ..Default::default()
         }
     }
@@ -111,6 +111,7 @@ impl UserMapper {
             last_failed_login_at: model.last_failed_login_at,
             account_locked_until: model.account_locked_until,
             last_login_at: model.last_login_at,
+            version: model.version,
         }
     }
 

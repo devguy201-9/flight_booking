@@ -7,7 +7,6 @@ use crate::application::common::cache_interface::CacheInterface;
 use crate::application::common::event_publisher::UserEventPublisher;
 use crate::application::common::use_case_error::{UseCaseError, UseCaseResult};
 use crate::core::context::request_context::RequestContext;
-use crate::core::context::request_context_provider::RequestContextProvider;
 use crate::domain::error::DomainError;
 use crate::domain::user;
 use crate::domain::user::errors::UserDomainError;
@@ -100,7 +99,7 @@ impl AuthServiceInterface for AuthService {
             // update failed attempts in domain
             user.handle_failed_login(now);
             self.user_repo
-                .update_user(&user)
+                .update_user_failed_login(&user)
                 .await
                 .map_err(|e| UseCaseError::Unexpected(e.to_string()))?;
 
@@ -111,7 +110,7 @@ impl AuthServiceInterface for AuthService {
         user.handle_successful_login(now);
 
         self.user_repo
-            .update_user(&user)
+            .update_user_successful_login(&user)
             .await
             .map_err(|e| UseCaseError::Unexpected(e.to_string()))?;
 

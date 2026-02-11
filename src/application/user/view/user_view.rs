@@ -13,6 +13,9 @@ pub struct UserView {
     pub display_name: Option<String>,
     pub gender: Option<String>,
     pub phone_number: Option<String>,
+
+    // for Optimistic locking
+    pub version: i32,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

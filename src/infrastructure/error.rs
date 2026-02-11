@@ -167,8 +167,6 @@ impl From<redis::RedisError> for TechnicalError {
 
 impl From<AddrParseError> for TechnicalError {
     fn from(e: AddrParseError) -> Self {
-        TechnicalError::InvalidConfig(format!(
-            "invalid server socket address: {e}"
-        ))
+        TechnicalError::InvalidConfig(format!("invalid server socket address: {e}"))
     }
 }

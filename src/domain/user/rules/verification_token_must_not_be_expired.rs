@@ -3,12 +3,12 @@ use crate::domain::error::DomainError;
 use crate::domain::user::errors::UserDomainError;
 use chrono::NaiveDateTime;
 
-pub struct VerificationTokenMustNotBeExpired {
-    pub token_expiry: Option<NaiveDateTime>,
-    pub now: NaiveDateTime,
+pub struct VerificationTokenMustNotBeExpired<'a>  {
+    pub token_expiry: Option<&'a NaiveDateTime>,
+    pub now: &'a NaiveDateTime,
 }
 
-impl BusinessRuleInterface for VerificationTokenMustNotBeExpired {
+impl<'a>  BusinessRuleInterface for VerificationTokenMustNotBeExpired<'a>  {
     fn check_broken(&self) -> Result<(), DomainError> {
         let expiry = self
             .token_expiry

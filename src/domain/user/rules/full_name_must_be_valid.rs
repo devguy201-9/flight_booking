@@ -2,11 +2,11 @@ use crate::domain::business_rule_interface::BusinessRuleInterface;
 use crate::domain::error::DomainError;
 use crate::domain::user::errors::UserDomainError;
 
-pub struct FullNameMustBeValid {
-    pub full_name: String,
+pub struct FullNameMustBeValid<'a>  {
+    pub full_name: &'a str,
 }
 
-impl BusinessRuleInterface for FullNameMustBeValid {
+impl<'a>  BusinessRuleInterface for FullNameMustBeValid<'a>  {
     fn check_broken(&self) -> Result<(), DomainError> {
         if self.full_name.trim().is_empty() {
             return Err(UserDomainError::Validation {

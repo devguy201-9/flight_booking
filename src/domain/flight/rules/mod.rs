@@ -1,0 +1,4 @@
+pub mod origin_must_not_equal_destination;
+pub mod available_seats_must_not_exceed_total_seats;
+pub mod arrival_time_must_be_after_departure_time;
+pub mod flight_checkin_window_must_be_valid;

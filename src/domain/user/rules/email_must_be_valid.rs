@@ -3,11 +3,11 @@ use crate::domain::error::DomainError;
 use crate::domain::user::errors::UserDomainError;
 use regex::Regex;
 
-pub struct EmailMustBeValid {
-    pub email: String,
+pub struct EmailMustBeValid<'a>  {
+    pub email: &'a str,
 }
 
-impl BusinessRuleInterface for EmailMustBeValid {
+impl<'a>  BusinessRuleInterface for EmailMustBeValid<'a>  {
     fn check_broken(&self) -> Result<(), DomainError> {
         let email_regex =
             Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").map_err(|_| {
@@ -17,7 +17,7 @@ impl BusinessRuleInterface for EmailMustBeValid {
                 }
             })?;
 
-        if !email_regex.is_match(&self.email) {
+        if !email_regex.is_match(self.email) {
             return Err(UserDomainError::Validation {
                 field: "email",
                 message: "Invalid email format".to_string(),

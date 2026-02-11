@@ -3,22 +3,22 @@ use crate::domain::error::DomainError;
 use crate::domain::user::errors::UserDomainError;
 use chrono::{Duration, NaiveDateTime};
 
-pub struct FailedLoginLimitMustNotBeExceeded {
+pub struct FailedLoginLimitMustNotBeExceeded<'a> {
     pub failed_attempts: i32,
-    pub last_failed_login_at: Option<NaiveDateTime>,
+    pub last_failed_login_at: Option<&'a NaiveDateTime>,
     pub max_attempts: i32,
     pub lockout_window_minutes: i64,
-    pub now: NaiveDateTime,
+    pub now: &'a NaiveDateTime,
 }
 
-impl BusinessRuleInterface for FailedLoginLimitMustNotBeExceeded {
+impl<'a> BusinessRuleInterface for FailedLoginLimitMustNotBeExceeded<'a> {
     fn check_broken(&self) -> Result<(), DomainError> {
         // Reset counter if more than lockout_window_minutes passed since last failed attempt
         let mut current_attempts = self.failed_attempts;
 
         if let Some(last_failed) = self.last_failed_login_at {
-            let window_ago = self.now - Duration::minutes(self.lockout_window_minutes);
-            if last_failed <= window_ago {
+            let window_ago = *self.now - Duration::minutes(self.lockout_window_minutes);
+            if *last_failed <= window_ago {
                 current_attempts = 0; // Counter reset
             }
         }

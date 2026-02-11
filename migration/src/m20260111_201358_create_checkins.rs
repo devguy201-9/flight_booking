@@ -47,6 +47,7 @@ impl MigrationTrait for Migration {
                     .col(timestamp_null(Checkins::CheckedInAt))
                     .col(ColumnDef::new(Checkins::CheckinChannel).string().not_null())
                     .col(string_null(Checkins::CheckedInIp))
+                    .col(ColumnDef::new(Checkins::Version).integer().default(1))
                     .col(
                         ColumnDef::new(Checkins::CreatedAt)
                             .date_time()
@@ -107,6 +108,16 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_version")
+                    .table(Checkins::Table)
+                    .col(Checkins::Version)
+                    .to_owned(),
+            )
+            .await?;
+
         exec_unprepared(
             manager,
             r#"
@@ -158,6 +169,7 @@ pub enum Checkins {
     CheckedInAt,
     CheckinChannel,
     CheckedInIp,
+    Version,
     CreatedAt,
     UpdatedAt,
     CreatedBy,

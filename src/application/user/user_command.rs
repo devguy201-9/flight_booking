@@ -75,6 +75,9 @@ pub struct UpdateUserCommand {
     pub birth_of_date: Option<NaiveDate>,
     pub phone_number: Option<String>,
     pub gender: Option<String>,
+
+    // for Optimistic locking
+    pub version: i32,
 }
 
 #[derive(Debug, Clone, Validate)]

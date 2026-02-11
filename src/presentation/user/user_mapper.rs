@@ -31,6 +31,7 @@ impl From<UpdateUserRequest> for UpdateUserCommand {
             birth_of_date: req.birth_of_date,
             phone_number: req.phone_number,
             gender: req.gender,
+            version: req.version,
         }
     }
 }

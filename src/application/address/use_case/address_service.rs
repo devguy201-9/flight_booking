@@ -1,6 +1,6 @@
 use crate::application::address::address_command::{CreateAddressCommand, UpdateAddressCommand};
-use crate::application::address::view::address_view::AddressView;
 use crate::application::address::use_case::address_service_interface::AddressServiceInterface;
+use crate::application::address::view::address_view::AddressView;
 use crate::application::common::cache_helper::{cache_get_json, cache_set_json};
 use crate::application::common::cache_interface::CacheInterface;
 use crate::application::common::event_publisher::AddressEventPublisher;
@@ -76,20 +76,20 @@ impl AddressServiceInterface for AddressService {
         // Domain: Create model with validation
         let props = CreateAddressProps {
             user_id,
-            title: command.title.clone(),
-            address_line_1: command.address_line_1.clone(),
-            address_line_2: command.address_line_2.clone(),
-            country: command.country.clone(),
-            city: command.city.clone(),
+            title: command.title,
+            address_line_1: command.address_line_1,
+            address_line_2: command.address_line_2,
+            country: command.country,
+            city: command.city,
             is_default: command.is_default,
             r#type: AddressTypeDomain::try_from(command.r#type.as_str())
                 .map_err(DomainError::from)?,
-            recipient_name: command.recipient_name.clone(),
-            postal_code: command.postal_code.clone(),
-            phone_number: command.phone_number.clone(),
+            recipient_name: command.recipient_name,
+            postal_code: command.postal_code,
+            phone_number: command.phone_number,
         };
         let now = chrono::Utc::now().naive_utc();
-        let address_model = address::entity::Address::create_new_address(props, now)?;
+        let address_model = address::entity::Address::new(props)?;
 
         // Infrastructure: Persist address (Model → ActiveModel in repository)
         let new_id = self
@@ -140,16 +140,16 @@ impl AddressServiceInterface for AddressService {
 
         // Domain: Update model with validation
         let props = UpdateAddressProps {
-            title: command.title.clone(),
-            address_line_1: command.address_line_1.clone(),
-            address_line_2: command.address_line_2.clone(),
-            country: command.country.clone(),
-            city: command.city.clone(),
+            title: command.title,
+            address_line_1: command.address_line_1,
+            address_line_2: command.address_line_2,
+            country: command.country,
+            city: command.city,
             is_default: command.is_default,
             r#type: address_type,
-            recipient_name: command.recipient_name.clone(),
-            postal_code: command.postal_code.clone(),
-            phone_number: command.phone_number.clone(),
+            recipient_name: command.recipient_name,
+            postal_code: command.postal_code,
+            phone_number: command.phone_number,
         };
 
         let _ = existing_address.update_from(props)?;

@@ -10,10 +10,12 @@ use crate::infrastructure::persistence::seaorm::entities::address as address_orm
 use crate::infrastructure::persistence::seaorm::entities::user as user_orm;
 use crate::infrastructure::persistence::seaorm::mappers::address_mapper::AddressMapper;
 use crate::infrastructure::persistence::seaorm::mappers::user_mapper::UserMapper;
+use crate::infrastructure::persistence::seaorm::optimistic_lock::optimistic_ok;
 use async_trait::async_trait;
+use sea_orm::sea_query::Expr;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter,
-    Select, Set,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, ExprTrait, PaginatorTrait,
+    QueryFilter, Select, Set,
 };
 use std::sync::Arc;
 
@@ -42,6 +44,7 @@ impl SeaOrmUserRepository {
                 // Usually, the driver (sqlx) places the message here.
                 let msg = err.to_string().to_lowercase();
 
+                // best-effort conflict detection
                 // ---- UNIQUE constraint (duplicate) ----
                 // Postgres: "duplicate key value violates unique constraint"
                 // MySQL: "duplicate entry"
@@ -120,11 +123,114 @@ impl UserRepositoryInterface for SeaOrmUserRepository {
         Ok(inserted.id)
     }
 
-    async fn update_user(&self, user: &DomainUser) -> Result<(), DomainError> {
+    async fn update_user_with_optimistic_lock(
+        &self,
+        user: &DomainUser,
+        expected_version: i32,
+    ) -> Result<(), DomainError> {
         let ctx = self.request_context_provider.current();
         let mut active_model = UserMapper::domain_to_active_model_update(user);
         active_model.apply_update_audit(&ctx);
-        active_model
+
+        let result = user_orm::Entity::update_many()
+            .filter(user_orm::Column::Id.eq(user.id))
+            .filter(user_orm::Column::Version.eq(expected_version))
+            .set(active_model)
+            .col_expr(
+                user_orm::Column::Version,
+                Expr::col(user_orm::Column::Version).add(1),
+            )
+            .exec(self.db.as_ref())
+            .await
+            .map_err(Self::map_db_err)?;
+
+        if !optimistic_ok(result.rows_affected) {
+            return Err(UserDomainError::OptimisticLockConflict.into());
+        }
+
+        Ok(())
+    }
+
+    async fn update_user_resend_verification(&self, user: &DomainUser) -> Result<(), DomainError> {
+        let ctx = self.request_context_provider.current();
+
+        let mut active = user_orm::ActiveModel {
+            id: Set(user.id),
+            verification_token: Set(user.verification_token.clone()),
+            verification_token_expiry: Set(user.verification_token_expiry),
+            verification_resend_count: Set(user.verification_resend_count),
+            last_verification_resend_at: Set(user.last_verification_resend_at),
+            ..Default::default()
+        };
+
+        active.apply_update_audit(&ctx);
+
+        active
+            .update(self.db.as_ref())
+            .await
+            .map_err(Self::map_db_err)?;
+
+        Ok(())
+    }
+
+    async fn update_user_verify_email(&self, user: &DomainUser) -> Result<(), DomainError> {
+        let ctx = self.request_context_provider.current();
+
+        let mut active = user_orm::ActiveModel {
+            id: Set(user.id),
+            status: Set(user.status.clone().into()),
+            email_verified_at: Set(user.email_verified_at),
+            verification_token: Set(None),
+            verification_token_expiry: Set(None),
+            ..Default::default()
+        };
+
+        active.apply_update_audit(&ctx);
+
+        active
+            .update(self.db.as_ref())
+            .await
+            .map_err(Self::map_db_err)?;
+
+        Ok(())
+    }
+
+    async fn update_user_failed_login(&self, user: &DomainUser) -> Result<(), DomainError> {
+        let ctx = self.request_context_provider.current();
+
+        let mut active = user_orm::ActiveModel {
+            id: Set(user.id),
+            failed_login_attempts: Set(user.failed_login_attempts),
+            last_failed_login_at: Set(user.last_failed_login_at),
+            account_locked_until: Set(user.account_locked_until),
+            ..Default::default()
+        };
+
+        active.apply_update_audit(&ctx);
+
+        active
+            .update(self.db.as_ref())
+            .await
+            .map_err(Self::map_db_err)?;
+
+        Ok(())
+    }
+
+    async fn update_user_successful_login(&self, user: &DomainUser) -> Result<(), DomainError> {
+        let ctx = self.request_context_provider.current();
+
+        let mut active = user_orm::ActiveModel {
+            id: Set(user.id),
+            failed_login_attempts: Set(0),
+            last_failed_login_at: Set(None),
+            account_locked_until: Set(None),
+            last_login_at: Set(user.last_login_at),
+            ..Default::default()
+        };
+
+        active.apply_update_audit(&ctx);
+
+        active
             .update(self.db.as_ref())
             .await
             .map_err(Self::map_db_err)?;

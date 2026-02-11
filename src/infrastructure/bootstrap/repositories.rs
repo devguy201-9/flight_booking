@@ -11,6 +11,6 @@ pub fn build_repositories(
 ) -> (Arc<SeaOrmUserRepository>, Arc<SeaOrmAddressRepository>) {
     (
         Arc::new(SeaOrmUserRepository::new(db.clone(), ctx_provider.clone())),
-        Arc::new(SeaOrmAddressRepository::new(db, ctx_provider.clone())),
+        Arc::new(SeaOrmAddressRepository::new(db.clone(), ctx_provider.clone())),
     )
 }

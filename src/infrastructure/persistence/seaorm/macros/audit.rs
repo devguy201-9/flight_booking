@@ -10,11 +10,11 @@ macro_rules! impl_audit_for_entity {
             ) {
                 let now = chrono::Utc::now().naive_utc();
 
-                self.created_at = sea_orm::Set(Some(now));
+                self.created_at = sea_orm::Set(now);
                 self.created_by = sea_orm::Set(ctx.user_id());
 
                 // optional but recommended
-                self.updated_at = sea_orm::Set(Some(now));
+                self.updated_at = sea_orm::Set(now);
                 self.updated_by = sea_orm::Set(ctx.user_id());
             }
 
@@ -22,7 +22,7 @@ macro_rules! impl_audit_for_entity {
                 &mut self,
                 ctx: &crate::core::context::request_context::RequestContext,
             ) {
-                self.updated_at = sea_orm::Set(Some(chrono::Utc::now().naive_utc()));
+                self.updated_at = sea_orm::Set(chrono::Utc::now().naive_utc());
                 self.updated_by = sea_orm::Set(ctx.user_id());
             }
         }

@@ -14,6 +14,7 @@ impl From<User> for UserView {
             display_name: u.display_name,
             gender: u.gender,
             phone_number: u.phone_number,
+            version: u.version,
         }
     }
 }

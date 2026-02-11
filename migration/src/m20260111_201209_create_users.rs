@@ -49,6 +49,7 @@ impl MigrationTrait for Migration {
                     .col(big_integer_null(Users::CreatedBy))
                     .col(big_integer_null(Users::UpdatedBy))
                     .col(big_integer_null(Users::DeletedBy))
+                    .col(ColumnDef::new(Users::Version).integer().default(1))
                     .col(timestamp_null(Users::DeletedAt))
                     .col(string_null(Users::PasswordHash))
                     .col(timestamp_null(Users::PasswordChangedAt))
@@ -75,6 +76,16 @@ impl MigrationTrait for Migration {
                             .col(Users::PhoneNumber)
                             .unique(),
                     )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_version")
+                    .table(Users::Table)
+                    .col(Users::Version)
                     .to_owned(),
             )
             .await?;
@@ -126,6 +137,7 @@ pub enum Users {
     EmailVerifiedAt,
     VerificationResendCount,
     LastVerificationResendAt,
+    Version,
     CreatedAt,
     UpdatedAt,
     DeletedAt,

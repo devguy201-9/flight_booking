@@ -50,6 +50,7 @@ impl MigrationTrait for Migration {
                     .col(string_null(Flights::Gate))
                     .col(ColumnDef::new(Flights::TotalSeats).integer().not_null())
                     .col(ColumnDef::new(Flights::AvailableSeats).integer().not_null())
+                    .col(ColumnDef::new(Flights::Version).integer().default(1))
                     .col(
                         ColumnDef::new(Flights::CreatedAt)
                             .date_time()
@@ -119,6 +120,16 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_version")
+                    .table(Flights::Table)
+                    .col(Flights::Version)
+                    .to_owned(),
+            )
+            .await?;
+
         exec_unprepared(
             manager,
             r#"
@@ -160,6 +171,7 @@ pub enum Flights {
     Gate,
     TotalSeats,
     AvailableSeats,
+    Version,
     CreatedAt,
     UpdatedAt,
     CreatedBy,

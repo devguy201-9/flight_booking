@@ -1,9 +1,9 @@
+use super::{address, booking};
 use crate::impl_audit_for_entity;
-use crate::infrastructure::persistence::seaorm::entities::address;
 use chrono::{NaiveDate, NaiveDateTime};
+use sea_orm::RelationTrait;
 use sea_orm::entity::prelude::*;
 use sea_orm::sea_query::StringLen;
-use sea_orm::RelationTrait;
 use sea_orm::{
     DeriveActiveEnum, DeriveEntityModel, DeriveRelation, EnumIter, Related, RelationDef,
 };
@@ -50,13 +50,16 @@ pub struct Model {
     pub last_failed_login_at: Option<NaiveDateTime>,
     pub account_locked_until: Option<NaiveDateTime>,
     pub last_login_at: Option<NaiveDateTime>,
-    pub created_at: Option<NaiveDateTime>,
-    pub updated_at: Option<NaiveDateTime>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
     pub deleted_at: Option<NaiveDateTime>,
     pub created_by: Option<i64>,
     pub updated_by: Option<i64>,
     pub deleted_by: Option<i64>,
     pub password_changed_at: Option<NaiveDateTime>,
+
+    // for Optimistic locking
+    pub version: i32,
 }
 
 /*
@@ -80,8 +83,8 @@ New Standard:
 pub enum Relation {
     #[sea_orm(has_many = "address::Entity")]
     Addresses,
-    //#[sea_orm(has_many = "super::bookings::Entity")]
-    //Bookings,
+    #[sea_orm(has_many = "booking::Entity")]
+    Bookings,
 }
 
 impl Related<address::Entity> for Entity {
@@ -89,13 +92,12 @@ impl Related<address::Entity> for Entity {
         Relation::Addresses.def()
     }
 }
-/*
-impl Related<super::bookings::Entity> for Entity {
+
+impl Related<booking::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Bookings.def()
     }
-}*/
-
+}
 #[derive(EnumIter, DeriveActiveEnum, Clone, Debug, Deserialize, Serialize, utoipa::ToSchema)]
 #[sea_orm(rs_type = "String", db_type = "String(StringLen::N(10))")]
 #[derive(PartialEq)]

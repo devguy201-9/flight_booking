@@ -43,4 +43,7 @@ pub enum HttpError {
 
     #[error("internal server error")]
     Internal,
+
+    #[error("optimistic lock conflict")]
+    OptimisticLockConflict,
 }

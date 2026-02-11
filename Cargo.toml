@@ -82,6 +82,7 @@ regex = "1.11.1"
 dotenv = "0.15.0"
 
 rdkafka = "0.38.0"
+rust_decimal = "1.39.0"
 [dependencies.rdkafka-sys]
 version = "4.9.0"
 features = ["cmake-build"]
