@@ -1,5 +1,5 @@
 pub mod events;
 pub mod rules;
-pub mod user;
-pub mod user_repository_interface;
-pub mod verification;
+pub mod entity;
+pub mod booking_repository_interface;
+pub mod error;

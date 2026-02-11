@@ -31,8 +31,15 @@ pub trait UserRepositoryInterface: Send + Sync {
     ) -> AppResult<Vec<user::Model>>;*/
 
     async fn create_user(&self, user: &User) -> Result<i64, DomainError>;
-    async fn update_user(&self, user: &User) -> Result<(), DomainError>;
-
+    async fn update_user_with_optimistic_lock(
+        &self,
+        user: &User,
+        expected_version: i32,
+    ) -> Result<(), DomainError>;
+    async fn update_user_resend_verification(&self, user: &User) -> Result<(), DomainError>;
+    async fn update_user_verify_email(&self, user: &User) -> Result<(), DomainError>;
+    async fn update_user_failed_login(&self, user: &User) -> Result<(), DomainError>;
+    async fn update_user_successful_login(&self, user: &User) -> Result<(), DomainError>;
     async fn find_user_by_id(&self, id: i64) -> Result<Option<User>, DomainError>;
     async fn find_user_by_username(&self, username: &str) -> Result<Option<User>, DomainError>;
     async fn find_user_by_email(&self, email: &str) -> Result<Option<User>, DomainError>;

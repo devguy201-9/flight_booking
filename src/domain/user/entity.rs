@@ -48,31 +48,31 @@ impl RegisterUserProps {
     pub fn validate(&self, today: NaiveDate) -> Result<(), DomainError> {
         // Rule: Email must be valid
         EmailMustBeValid {
-            email: self.email.clone(),
+            email: self.email.as_str(),
         }
         .check_broken()?;
         // Rule: Password must meet requirements
         PasswordMustMeetRequirements {
-            password: self.password.clone(),
+            password: self.password.as_str(),
         }
         .check_broken()?;
         // Rule: Full name must be valid
         FullNameMustBeValid {
-            full_name: self.full_name.clone(),
+            full_name: self.full_name.as_str(),
         }
         .check_broken()?;
         // Rule: Phone must be valid if provided
         if let Some(ref phone) = self.phone_number {
             PhoneMustBeValid {
-                phone: phone.clone(),
+                phone: phone.as_str(),
             }
             .check_broken()?;
         }
         // Rule: User must be at least 13 years old
         UserMustBeAtLeastAge {
-            date_of_birth: self.birth_of_date,
+            date_of_birth: self.birth_of_date.as_ref(),
             minimum_age: 13,
-            today,
+            today: &today,
         }
         .check_broken()?;
 
@@ -81,22 +81,22 @@ impl RegisterUserProps {
 }
 
 impl CreateUserProps {
-    pub fn validate(&self, today: NaiveDate) -> Result<(), DomainError> {
+    pub fn validate(&self, today: &NaiveDate) -> Result<(), DomainError> {
         // required
         EmailMustBeValid {
-            email: self.email.clone(),
+            email: self.email.as_str(),
         }
         .check_broken()?;
 
         if let Some(ref phone) = self.phone_number {
             PhoneMustBeValid {
-                phone: phone.clone(),
+                phone: phone.as_str(),
             }
             .check_broken()?;
         }
 
         UserMustBeAtLeastAge {
-            date_of_birth: self.birth_of_date,
+            date_of_birth: self.birth_of_date.as_ref(),
             minimum_age: 13,
             today,
         }
@@ -106,24 +106,24 @@ impl CreateUserProps {
     }
 }
 impl UpdateUserProps {
-    pub fn validate(&self, today: NaiveDate) -> Result<(), DomainError> {
+    pub fn validate(&self, today: &NaiveDate) -> Result<(), DomainError> {
         if let Some(ref email) = self.email {
             EmailMustBeValid {
-                email: email.clone(),
+                email: email.as_str(),
             }
             .check_broken()?;
         }
 
         if let Some(ref phone) = self.phone_number {
             PhoneMustBeValid {
-                phone: phone.clone(),
+                phone: phone.as_str(),
             }
             .check_broken()?;
         }
 
         if self.birth_of_date.is_some() {
             UserMustBeAtLeastAge {
-                date_of_birth: self.birth_of_date,
+                date_of_birth: self.birth_of_date.as_ref(),
                 minimum_age: 13,
                 today,
             }
@@ -170,6 +170,9 @@ pub struct User {
     pub last_failed_login_at: Option<NaiveDateTime>,
     pub account_locked_until: Option<NaiveDateTime>,
     pub last_login_at: Option<NaiveDateTime>,
+
+    // for Optimistic locking
+    pub version: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -251,13 +254,14 @@ impl User {
             last_failed_login_at: None,
             account_locked_until: None,
             last_login_at: None,
+            version: 1,
         })
     }
 
     // Rule: Create a new user model with validation
     pub fn create_new_user(props: &CreateUserProps, today: NaiveDate) -> Result<Self, DomainError> {
         // Validate domain rules
-        props.validate(today)?;
+        props.validate(&today)?;
         let username = generate_username_from_email(&props.email)?;
 
         // Create and return the user model
@@ -295,6 +299,7 @@ impl User {
             last_failed_login_at: None,
             account_locked_until: None,
             last_login_at: None,
+            version: 1,
         })
     }
 
@@ -304,7 +309,7 @@ impl User {
         props: &UpdateUserProps,
         now: NaiveDate,
     ) -> Result<(), DomainError> {
-        props.validate(now)?;
+        props.validate(&now)?;
 
         if let Some(ref avatar) = props.avatar {
             self.avatar = Some(avatar.clone());
@@ -340,13 +345,13 @@ impl User {
     pub fn verify_email(&mut self, now: NaiveDateTime) -> Result<(), DomainError> {
         // Rule: User must not be already verified
         UserMustNotBeAlreadyVerified {
-            email_verified_at: self.email_verified_at,
+            email_verified_at: self.email_verified_at.as_ref(),
         }
         .check_broken()?;
         // Rule: Verification token must not be expired
         VerificationTokenMustNotBeExpired {
-            token_expiry: self.verification_token_expiry,
-            now,
+            token_expiry: self.verification_token_expiry.as_ref(),
+            now: &now,
         }
         .check_broken()?;
         // Update user status and verification fields
@@ -367,7 +372,7 @@ impl User {
     ) -> Result<(), DomainError> {
         // Rule: User must not be already verified
         UserMustNotBeAlreadyVerified {
-            email_verified_at: self.email_verified_at,
+            email_verified_at: self.email_verified_at.as_ref(),
         }
         .check_broken()?;
 
@@ -381,9 +386,9 @@ impl User {
         // Rule: Resend limit must not be exceeded (max 3 per hour)
         VerificationResendLimitMustNotBeExceeded {
             resend_count: self.verification_resend_count,
-            last_resend_at: self.last_verification_resend_at,
+            last_resend_at: self.last_verification_resend_at.as_ref(),
             max_resends_per_hour: 3,
-            now,
+            now: &now,
         }
         .check_broken()?;
         // Update verification token and tracking fields
@@ -400,8 +405,8 @@ impl User {
     pub fn validate_login_attempt(&self, now: NaiveDateTime) -> Result<(), DomainError> {
         // Rule: Account must not be locked
         AccountMustNotBeLocked {
-            account_locked_until: self.account_locked_until,
-            now,
+            account_locked_until: self.account_locked_until.as_ref(),
+            now: &now,
         }
         .check_broken()?;
         // Rule: Account must be active
@@ -412,10 +417,10 @@ impl User {
         // Rule: Failed login limit must not be exceeded
         FailedLoginLimitMustNotBeExceeded {
             failed_attempts: self.failed_login_attempts,
-            last_failed_login_at: self.last_failed_login_at,
+            last_failed_login_at: self.last_failed_login_at.as_ref(),
             max_attempts: 5,
             lockout_window_minutes: 15,
-            now,
+            now: &now,
         }
         .check_broken()?;
 

@@ -1,12 +1,16 @@
 pub mod address;
+pub mod airport;
 pub mod auth;
+pub mod boarding_pass;
+pub mod booking;
+pub mod checkin;
+pub mod flight;
+pub mod passenger;
 pub mod server;
 pub mod user;
 
 use crate::api;
 use crate::core::app_state::AppState;
-use axum::http::{StatusCode, Uri};
-use axum::routing::get;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 

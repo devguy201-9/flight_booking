@@ -2,11 +2,11 @@ use crate::domain::business_rule_interface::BusinessRuleInterface;
 use crate::domain::error::DomainError;
 use crate::domain::user::errors::UserDomainError;
 
-pub struct PasswordMustMeetRequirements {
-    pub password: String,
+pub struct PasswordMustMeetRequirements<'a> {
+    pub password: &'a str,
 }
 
-impl BusinessRuleInterface for PasswordMustMeetRequirements {
+impl<'a> BusinessRuleInterface for PasswordMustMeetRequirements<'a> {
     fn check_broken(&self) -> Result<(), DomainError> {
         // Min 8 chars
         if self.password.len() < 8 {

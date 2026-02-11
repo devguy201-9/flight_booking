@@ -1540,6 +1540,7 @@ dependencies = [
  "redis",
  "regex",
  "reqwest",
+ "rust_decimal",
  "sea-orm",
  "sea-orm-migration",
  "sea-query 0.32.7",

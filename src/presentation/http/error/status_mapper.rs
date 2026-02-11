@@ -29,6 +29,13 @@ impl HttpError {
                 detail: detail.clone(),
             },
 
+            HttpError::OptimisticLockConflict => ApiErrorResponse::Conflict {
+                errors: vec![FieldError {
+                    field: "version".into(),
+                    message: "Resource was updated by another request. Please reload.".into(),
+                }],
+            },
+
             HttpError::EntityNotAvailable { detail } => ApiErrorResponse::NotAvailable {
                 detail: detail.clone(),
             },

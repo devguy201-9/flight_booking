@@ -43,6 +43,7 @@ impl MigrationTrait for Migration {
                     .col(string_null(Passengers::PhoneNumber))
                     .col(string_null(Passengers::FfAirlineCode))
                     .col(string_null(Passengers::FfNumber))
+                    .col(ColumnDef::new(Passengers::Version).integer().default(1))
                     .col(
                         ColumnDef::new(Passengers::CreatedAt)
                             .date_time()
@@ -74,6 +75,16 @@ impl MigrationTrait for Migration {
                     .name("idx_passengers_booking_id")
                     .table(Passengers::Table)
                     .col(Passengers::BookingId)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_version")
+                    .table(Passengers::Table)
+                    .col(Passengers::Version)
                     .to_owned(),
             )
             .await?;
@@ -115,6 +126,7 @@ pub enum Passengers {
     PhoneNumber,
     FfAirlineCode,
     FfNumber,
+    Version,
     CreatedAt,
     UpdatedAt,
     CreatedBy,

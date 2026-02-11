@@ -48,6 +48,7 @@ impl MigrationTrait for Migration {
                     .col(string_null(Bookings::PaymentMethod))
                     .col(string_null(Bookings::PaymentTxnId))
                     .col(timestamp_null(Bookings::PaidAt))
+                    .col(ColumnDef::new(Bookings::Version).integer().default(1))
                     .col(
                         ColumnDef::new(Bookings::CreatedAt)
                             .date_time()
@@ -106,6 +107,16 @@ impl MigrationTrait for Migration {
                     .name("idx_bookings_flight_id")
                     .table(Bookings::Table)
                     .col(Bookings::FlightId)
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx_version")
+                    .table(Bookings::Table)
+                    .col(Bookings::Version)
                     .to_owned(),
             )
             .await?;
@@ -170,6 +181,7 @@ pub enum Bookings {
     PaymentMethod,
     PaymentTxnId,
     PaidAt,
+    Version,
     CreatedAt,
     UpdatedAt,
     CreatedBy,

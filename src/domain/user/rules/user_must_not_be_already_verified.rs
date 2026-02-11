@@ -3,11 +3,11 @@ use crate::domain::error::DomainError;
 use crate::domain::user::errors::UserDomainError;
 use chrono::NaiveDateTime;
 
-pub struct UserMustNotBeAlreadyVerified {
-    pub email_verified_at: Option<NaiveDateTime>,
+pub struct UserMustNotBeAlreadyVerified<'a>  {
+    pub email_verified_at: Option<&'a NaiveDateTime>,
 }
 
-impl BusinessRuleInterface for UserMustNotBeAlreadyVerified {
+impl<'a>  BusinessRuleInterface for UserMustNotBeAlreadyVerified<'a>  {
     fn check_broken(&self) -> Result<(), DomainError> {
         if self.email_verified_at.is_some() {
             return Err(UserDomainError::Validation {

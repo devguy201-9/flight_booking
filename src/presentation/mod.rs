@@ -1,7 +1,13 @@
-pub mod user;
 pub mod address;
-pub mod common;
-pub mod http;
-pub mod context;
+pub mod airport;
 pub mod auth;
+pub mod boarding_pass;
+pub mod booking;
+pub mod checkin;
+pub mod common;
+pub mod context;
+pub mod flight;
 pub mod gateway;
+pub mod http;
+pub mod passenger;
+pub mod user;

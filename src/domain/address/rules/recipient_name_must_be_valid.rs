@@ -2,11 +2,11 @@ use crate::domain::address::error::AddressDomainError;
 use crate::domain::business_rule_interface::BusinessRuleInterface;
 use crate::domain::error::DomainError;
 
-pub struct RecipientNameMustBeValid {
-    pub recipient_name: String,
+pub struct RecipientNameMustBeValid<'a> {
+    pub recipient_name: &'a str,
 }
 
-impl BusinessRuleInterface for RecipientNameMustBeValid {
+impl<'a> BusinessRuleInterface for RecipientNameMustBeValid<'a> {
     fn check_broken(&self) -> Result<(), DomainError> {
         if self.recipient_name.trim().is_empty() {
             return Err(AddressDomainError::Validation {

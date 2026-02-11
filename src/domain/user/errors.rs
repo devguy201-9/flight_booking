@@ -28,4 +28,7 @@ pub enum UserDomainError {
 
     #[error("Entity not found: {detail}")]
     NotFound { detail: String },
+
+    #[error("optimistic lock conflict")]
+    OptimisticLockConflict,
 }

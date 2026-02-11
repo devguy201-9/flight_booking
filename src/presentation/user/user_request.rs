@@ -23,6 +23,9 @@ pub struct UpdateUserRequest {
     pub birth_of_date: Option<NaiveDate>,
     pub phone_number: Option<String>,
     pub gender: Option<String>,
+
+    // for Optimistic locking
+    pub version: i32,
 }
 #[derive(Debug, Deserialize, Serialize, ToSchema, Clone)]
 pub struct VerifyEmailRequest {

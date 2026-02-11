@@ -3,17 +3,19 @@ use crate::application::common::cache_helper::{cache_set_json, cache_try_get_jso
 use crate::application::common::cache_interface::CacheInterface;
 use crate::application::common::event_publisher::UserEventPublisher;
 use crate::application::common::use_case_error::{UseCaseError, UseCaseResult};
-use crate::application::user::view::user_view::{UserView, UserResponseView};
-use crate::application::user::view::user_with_addresses::UserWithAddressesView;
 use crate::application::user::use_case::user_service_interface::UserServiceInterface;
 use crate::application::user::user_command::{
     AdminCreateUserCommand, RegisterUserCommand, ResendVerificationEmailCommand, UpdateUserCommand,
     VerifyEmailCommand,
 };
+use crate::application::user::view::user_view::{UserResponseView, UserView};
+use crate::application::user::view::user_with_addresses::UserWithAddressesView;
 use crate::core::context::request_context::RequestContext;
 use crate::domain::business_rule_interface::BusinessRuleInterface;
+use crate::domain::error::DomainError;
 use crate::domain::user;
 use crate::domain::user::entity::{CreateUserProps, RegisterUserProps, UpdateUserProps};
+use crate::domain::user::errors::UserDomainError;
 use crate::domain::user::events::user_activated::UserActivatedEvent;
 use crate::domain::user::events::user_registered::UserRegisteredEvent;
 use crate::domain::user::rules::{
@@ -21,6 +23,7 @@ use crate::domain::user::rules::{
 };
 use crate::domain::user::user_repository_interface::UserRepositoryInterface;
 use std::sync::Arc;
+use validator::Validate;
 
 /// Application service - orchestrates domain logic, database, and external services
 pub struct UserService {
@@ -52,6 +55,14 @@ impl UserService {
 #[async_trait::async_trait]
 impl UserServiceInterface for UserService {
     async fn register_user(&self, command: RegisterUserCommand) -> UseCaseResult<UserResponseView> {
+        // Validate command
+        command.validate().map_err(|e| {
+            UseCaseError::Domain(DomainError::User(UserDomainError::Validation {
+                field: "command",
+                message: e.to_string(),
+            }))
+        })?;
+
         // Business Rule: Email must be unique (database-dependent rule - checked in application layer)
         let email_is_unique = !self
             .user_repo
@@ -167,7 +178,7 @@ impl UserServiceInterface for UserService {
         let user_email = user.email.clone();
 
         // Persist updated user
-        self.user_repo.update_user(&user).await?;
+        self.user_repo.update_user_verify_email(&user).await?;
 
         // Publish UserActivated event
         let event = UserActivatedEvent::new(user_id, user_email, verified_at);
@@ -184,6 +195,14 @@ impl UserServiceInterface for UserService {
         &self,
         command: ResendVerificationEmailCommand,
     ) -> UseCaseResult<bool> {
+        // Validate command
+        command.validate().map_err(|e| {
+            UseCaseError::Domain(DomainError::User(UserDomainError::Validation {
+                field: "command",
+                message: e.to_string(),
+            }))
+        })?;
+
         // Find user by email
         let user_opt = self
             .user_repo
@@ -204,7 +223,10 @@ impl UserServiceInterface for UserService {
         user.prepare_resend_verification(new_token.clone(), new_expiry, now)?;
 
         // Persist updated user
-        self.user_repo.update_user(&user).await?;
+        self.user_repo
+            .update_user_resend_verification(&user)
+            .await
+            .map_err(UseCaseError::from)?;
 
         // Publish UserRegistered event again (to trigger email sending)
         let event = UserRegisteredEvent::new(
@@ -228,6 +250,14 @@ impl UserServiceInterface for UserService {
         ctx: RequestContext,
         command: AdminCreateUserCommand,
     ) -> UseCaseResult<UserResponseView> {
+        // Validate command
+        command.validate().map_err(|e| {
+            UseCaseError::Domain(DomainError::User(UserDomainError::Validation {
+                field: "command",
+                message: e.to_string(),
+            }))
+        })?;
+
         if !ctx.is_admin() {
             return Err(UseCaseError::PermissionDenied);
         }
@@ -266,14 +296,14 @@ impl UserServiceInterface for UserService {
 
         // Domain create (domain validate business rules)
         let props = CreateUserProps {
-            avatar: command.avatar.clone(),
-            email: command.email.clone(),
-            first_name: command.first_name.clone(),
-            last_name: command.last_name.clone(),
-            display_name: Some(full_name.clone()),
-            phone_number: command.phone_number.clone(),
+            avatar: command.avatar,
+            email: command.email,
+            first_name: command.first_name,
+            last_name: command.last_name,
+            display_name: Some(full_name),
+            phone_number: command.phone_number,
             birth_of_date: command.birth_of_date,
-            gender: command.gender.clone(),
+            gender: command.gender,
         };
         // Create user model (domain layer enforces all other business rules internally)
         let today = chrono::Utc::now().date_naive();
@@ -321,6 +351,14 @@ impl UserServiceInterface for UserService {
         id: i64,
         command: UpdateUserCommand,
     ) -> UseCaseResult<UserResponseView> {
+        // Validate command
+        command.validate().map_err(|e| {
+            UseCaseError::Domain(DomainError::User(UserDomainError::Validation {
+                field: "command",
+                message: e.to_string(),
+            }))
+        })?;
+
         if !ctx.is_admin() && ctx.user_id().is_some_and(|uid| uid != id) {
             return Err(UseCaseError::PermissionDenied);
         }
@@ -370,14 +408,14 @@ impl UserServiceInterface for UserService {
         let today = chrono::Utc::now().date_naive();
 
         let props = UpdateUserProps {
-            avatar: command.avatar.clone(),
-            email: command.email.clone(),
-            first_name: command.first_name.clone(),
-            last_name: command.last_name.clone(),
+            avatar: command.avatar,
+            email: command.email,
+            first_name: command.first_name,
+            last_name: command.last_name,
             display_name,
-            phone_number: command.phone_number.clone(),
+            phone_number: command.phone_number,
             birth_of_date: command.birth_of_date,
-            gender: command.gender.clone(),
+            gender: command.gender,
         };
         // Domain: Update model with validation
         existing_user.update_from(&props, today)?;
@@ -385,9 +423,14 @@ impl UserServiceInterface for UserService {
         // Infrastructure: Persist updated user (Model → ActiveModel in repository)
         let updated_user = self
             .user_repo
-            .update_user(&existing_user)
+            .update_user_with_optimistic_lock(&existing_user, command.version)
             .await
-            .map_err(|e| UseCaseError::Unexpected(e.to_string()))?;
+            .map_err(|e| match e {
+                DomainError::User(UserDomainError::OptimisticLockConflict) => {
+                    UseCaseError::Domain(e)
+                }
+                _ => UseCaseError::Unexpected(e.to_string()),
+            })?;
 
         // External service: Clear Redis cache
         let cache_key = Self::profile_cache_key(id);
@@ -434,7 +477,8 @@ impl UserServiceInterface for UserService {
         };
 
         // 4) Cache to Redis (TTL: 24h)
-        if let Err(err) = cache_set_json(self.cache.as_ref(), &cache_key, &model_view, 86400).await {
+        if let Err(err) = cache_set_json(self.cache.as_ref(), &cache_key, &model_view, 86400).await
+        {
             tracing::warn!("cache set profile failed key={}: {}", cache_key, err);
         }
 

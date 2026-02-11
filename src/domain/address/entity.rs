@@ -80,21 +80,20 @@ impl TryFrom<&str> for AddressTypeDomain {
 // Validates all business rules before creating the model
 impl Address {
     // Rule: Create a new address model with validation
-    pub fn create_new_address(
+    pub fn new(
         props: CreateAddressProps,
-        now: NaiveDateTime,
     ) -> Result<Self, DomainError> {
         // Validate required fields
         if let Some(ref phone) = props.phone_number {
             PhoneMustBeValid {
-                phone: phone.clone(),
+                phone: phone.as_str(),
             }
             .check_broken()?;
         }
 
         if let Some(ref name) = props.recipient_name {
             RecipientNameMustBeValid {
-                recipient_name: name.clone(),
+                recipient_name: name.as_str(),
             }
             .check_broken()?;
         }
@@ -121,14 +120,14 @@ impl Address {
     pub fn update_from(&mut self, props: UpdateAddressProps) -> Result<(), DomainError> {
         if let Some(ref phone) = props.phone_number {
             PhoneMustBeValid {
-                phone: phone.clone(),
+                phone: phone.as_str(),
             }
             .check_broken()?;
         }
 
         if let Some(ref name) = props.recipient_name {
             RecipientNameMustBeValid {
-                recipient_name: name.clone(),
+                recipient_name: name.as_str(),
             }
             .check_broken()?;
         }

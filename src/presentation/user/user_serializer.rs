@@ -17,6 +17,9 @@ pub struct UserSerializer {
     pub display_name: Option<String>,
     pub gender: Option<String>,
     pub phone_number: Option<String>,
+
+    // for Optimistic locking
+    pub version: i32,
 }
 
 impl From<UserWithAddressesView> for UserSerializer {
@@ -28,7 +31,7 @@ impl From<UserWithAddressesView> for UserSerializer {
             last_name: user.last_name,
             username: user.username,
             email: user.email,
-
+            version: user.version,
             address: value
                 .addresses
                 .into_iter()
@@ -80,6 +83,9 @@ pub struct UserBasicSerializer {
     pub display_name: Option<String>,
     pub gender: Option<String>,
     pub phone_number: Option<String>,
+
+    // for Optimistic locking
+    pub version: i32,
 }
 
 impl From<UserView> for UserBasicSerializer {
@@ -94,6 +100,7 @@ impl From<UserView> for UserBasicSerializer {
             display_name: model_view.display_name,
             gender: model_view.gender,
             phone_number: model_view.phone_number,
+            version: model_view.version,
         }
     }
 }

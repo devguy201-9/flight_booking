@@ -1,4 +1,10 @@
-pub mod user;
 pub mod address;
 pub mod auth;
 pub mod common;
+pub mod user;
+pub mod airport;
+pub mod boarding_pass;
+pub mod booking;
+pub mod checkin;
+pub mod flight;
+pub mod passenger;
