@@ -1,1 +1,10 @@
 /target
+# Secret keys
+*.pem
+static/secret_key/
+
+# Config files có credentials
+local.toml
+stag.toml
+prod.toml
+.env
