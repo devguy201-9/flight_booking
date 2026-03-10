@@ -1,0 +1,30 @@
+profile = "local"
+deploy_mode = "mono"
+
+[server]
+addr = "127.0.0.1"
+port = 3001
+
+[db]
+host = "127.0.0.1"
+port = 5432
+username = "YOUR_DB_USERNAME"
+password = "YOUR_DB_PASSWORD"
+database_name = "flight_booking"
+database_url = "postgres://YOUR_DB_USERNAME:YOUR_DB_PASSWORD@localhost:5432/flight_booking"
+
+[secret]
+private_access_key = "./static/secret_key/private_access_rsa_key.pem"
+public_access_key = "./static/secret_key/public_access_rsa_key.pem"
+private_refresh_key = "./static/secret_key/private_refresh_rsa_key.pem"
+public_refresh_key = "./static/secret_key/public_refresh_rsa_key.pem"
+
+[redis]
+username = "default"
+password = "YOUR_REDIS_PASSWORD"
+host = "127.0.0.1"
+port = 6379
+
+[kafka]
+server_url = "localhost:9092"
+group_id = "flight-booking-local"
