@@ -1,168 +1,170 @@
-# Flight Booking Backend (Rust)
+# Flight Booking Backend — Rust
 
-A backend flight booking system built with Rust, designed using Clean Architecture and domain-driven modular structure.
+A backend system for flight booking operations, built with Rust using Clean Architecture and Domain-Driven Design principles.
 
-This project focuses on building a scalable and extensible backend foundation for a flight booking platform, starting from identity, authentication, and domain modeling layers.
+> **Note:** This is a learning project built by following a reference implementation and extending it with AI assistance. It covers DDD patterns, event-driven architecture, and Rust backend development practices.
 
 ---
 
 ## Architecture
 
-The project follows a layered Clean Architecture approach:
+Layered Clean Architecture with strict dependency inversion:
 
 ```
 src/
-├── api/
-├── application/
-├── core/
-├── domain/
-│   ├── user/
-│   ├── address/
-│   ├── flight/
-│   ├── booking/
-│   ├── passenger/
-│   ├── airport/
-│   ├── checkin/
-│   └── boarding_pass/
-├── infrastructure/
-├── presentation/
-├── utils/
-└── bin/
+├── domain/          # Entities, business rules, repository traits, domain events
+├── application/     # Use case orchestration, DTOs, service interfaces
+├── infrastructure/  # SeaORM repositories, Kafka publishers, Redis cache, JWT
+├── presentation/    # HTTP handlers, request/response mapping
+├── api/             # Route definitions
+└── core/            # AppState, request context, shared config
 ```
 
-Layer responsibilities:
-
-- Domain: Business entities, value objects, rules, repository traits
-- Application: Use case orchestration
-- Infrastructure: Database and external service implementations
-- Presentation / API: HTTP layer and DTO mapping
-
-Dependency inversion is achieved using Rust traits.
+Dependencies flow inward: `presentation → application → domain ← infrastructure`
 
 ---
 
 ## Technology Stack
 
-- Rust (Edition 2021)
-- Axum
-- Tokio
-- PostgreSQL
-- SQLx
-- Serde
-- UUID
-- JWT Authentication
-- Docker
+| Layer | Technology |
+|---|---|
+| Language | Rust (Edition 2021) |
+| Web Framework | Axum + Tokio |
+| ORM | SeaORM |
+| Database | PostgreSQL |
+| Cache | Redis |
+| Messaging | Kafka (rdkafka) |
+| Auth | JWT + Argon2 password hashing |
+| Migration | SeaORM Migration |
+| Container | Docker, Docker Compose |
 
 ---
 
-## Implemented Modules
+## Implemented Domains
 
 ### User
-
-- User registration
-- Password hashing
-- Login flow
-- JWT token issuance
-- Domain validation
-- Repository abstraction
+- Registration with domain validation (email uniqueness, password requirements, age check)
+- Email verification flow with token expiry and resend rate limiting
+- Login with failed attempt tracking and account lockout
+- JWT token issuance + refresh token via Redis session store
+- Domain rules as individual structs implementing `BusinessRuleInterface`
 
 ### Address
+- Address entity with domain-level validation (phone format, recipient name)
+- Association with user entity
+- Domain events: AddressCreated, AddressUpdated, AddressDeleted
 
-- Address entity modeling
-- Association with user
-- Domain-level validation
-- Repository pattern implementation
+### Airport
+- IATA code validation rule
+- Full CRUD with repository abstraction
 
-### Authentication
+### Flight
+- Domain rules: arrival must be after departure, origin ≠ destination, available seats ≤ total seats, check-in window validation
+- Flight management APIs
 
-- JWT-based authentication
-- Middleware protection
-- Configurable secret key
-- Token validation pipeline
+### Booking
+- Full booking lifecycle: Draft → Confirmed → Cancelled / Expired
+- Payment tracking: Unpaid → Paid → Refunded
+- **Optimistic locking** on updates via `version` field — prevents lost updates under concurrent requests
+- Domain rules: booking code format, amount validation, contact info validation
+
+### Passenger
+- Passenger entity with validation (name, email, phone, DOB not in future, age range)
+- Association with booking
+
+### Check-in
+- Check-in state: Pending → Completed
+- Domain rules: baggage weight validation, check-in must be in pending state
+
+### Boarding Pass
+- Boarding pass generation linked to check-in
 
 ---
 
-## Domain Structure
+## Key Design Patterns
 
-Each domain module is organized with:
+**Specification Pattern (BusinessRuleInterface)**
+Each business rule is a separate struct implementing `check_broken() -> Result<(), DomainError>`.
+Rules are composable, independently testable, and easy to extend without modifying entities.
 
-- entity definitions
-- business rules
-- domain errors
-- repository interfaces
-- event and rule abstractions where applicable
+```
+domain/user/rules/
+├── email_must_be_valid.rs
+├── email_must_be_unique.rs
+├── password_must_meet_requirements.rs
+├── account_must_not_be_locked.rs
+├── failed_login_limit_must_not_be_exceeded.rs
+└── ... (15+ rules)
+```
 
-This structure allows new modules (flight, booking, checkin) to be implemented without affecting existing layers.
+**Optimistic Locking**
+Booking updates use `WHERE id = $1 AND version = $expected` with auto-increment on `version`.
+Returns `OptimisticLockConflict` if another request updated the record concurrently.
+
+**Event Publishing (Kafka)**
+Domain events published via typed `EventPublisher` traits:
+- `UserRegisteredEvent` → `user_registered` topic
+- `UserActivatedEvent` → `user_activated` topic
+- `UserLoggedInEvent` → `user_logged_in` topic
+- `AddressCreatedEvent`, `AddressUpdatedEvent`, `AddressDeletedEvent`
+
+**Request Context**
+`RequestContextProvider` trait injected into repositories for audit fields (created_by, updated_by) without coupling domain to HTTP layer.
 
 ---
 
 ## Database
 
-Currently implemented:
+Migrations managed via SeaORM Migration crate, located in `migration/src/`.
 
-- users
-- addresses
-
-Migrations are located in:
-
-```
-migration/
-```
-
-The schema is designed to support extension for flights, bookings, passengers, and check-in workflows.
+Implemented tables: `users`, `addresses`, `airports`, `flights`, `bookings`, `passengers`, `checkins`, `boarding_passes`
 
 ---
 
 ## Running the Project
 
-Clone the repository:
+### Prerequisites
+- Rust (stable)
+- Docker + Docker Compose
 
-```
-git clone https://github.com/devguy201-9/flight_booking.git
-cd flight_booking
-```
+### Environment variables
 
-Configure environment variables in `.env`:
+Copy and configure `.env`:
 
-```
+```env
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/flight_db
+REDIS_URL=redis://localhost:6379
+KAFKA_BROKERS=localhost:9092
 JWT_SECRET=your_secret_key
 ```
 
-Run with Docker:
+> ⚠️ Never commit `.env` with real credentials to version control.
 
-```
+### Run with Docker
+
+```bash
 docker-compose up --build
 ```
 
-Or run locally:
+### Run locally
 
-```
+```bash
+# Start infrastructure
+docker-compose up postgres redis kafka -d
+
+# Run migrations
+cargo run -p migration
+
+# Start server
 cargo run
 ```
 
 ---
 
-## Design Principles
+## Known Limitations
 
-- Clean Architecture
-- Domain-driven module organization
-- Trait-based repository abstraction
-- Explicit error modeling
-- Separation of business logic and infrastructure
-- Extensible system foundation
-
----
-
-## Project Status
-
-The core identity and authentication layer is fully implemented.
-
-The system architecture is prepared to support:
-
-- Flight management
-- Booking workflows
-- Passenger management
-- Check-in and boarding logic
-
-The project is structured for incremental feature expansion while maintaining architectural integrity.
+- No test coverage (unit or integration tests)
+- No authentication on most endpoints beyond user/auth routes
+- Kafka consumer not implemented — only event publishing
+- No pagination on list endpoints
+- Single-node only — no distributed tracing or metrics
