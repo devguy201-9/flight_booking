@@ -1,2 +1,8 @@
 pub mod kafka_user_event_publisher;
 pub mod kafka_address_event_publisher;
+pub mod kafka_airport_event_publisher;
+pub mod kafka_flight_event_publisher;
+pub mod kafka_booking_event_publisher;
+pub mod kafka_passenger_event_publisher;
+pub mod kafka_checkin_event_publisher;
+pub mod kafka_boarding_pass_event_publisher;

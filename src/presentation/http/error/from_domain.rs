@@ -159,7 +159,7 @@ impl From<BookingDomainError> for HttpError {
 
             BookingDomainError::InvalidOperationForStatus { status } => HttpError::Conflict {
                 field: "status".to_string(),
-                message: format!(o
+                message: format!(
                     "operation not allowed for booking status: {:?}",
                     status
                 ),

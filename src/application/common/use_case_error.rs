@@ -14,6 +14,9 @@ pub enum UseCaseError {
     #[error("entity not found: {0}")]
     NotFound(String),
 
+    #[error("business rule violated: {0}")]
+    BusinessRule(String),
+
     #[error("unexpected error: {0}")]
     Unexpected(String),
 }

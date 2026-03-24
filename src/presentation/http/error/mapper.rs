@@ -12,6 +12,8 @@ impl From<UseCaseError> for HttpError {
 
             UseCaseError::NotFound(detail) => HttpError::EntityNotFound { detail },
 
+            UseCaseError::BusinessRule(detail) => HttpError::BadRequest(detail),
+
             UseCaseError::Unexpected(detail) => {
                 log::error!("Unexpected UseCaseError: {}", detail);
                 HttpError::Internal

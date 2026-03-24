@@ -12,5 +12,5 @@ pub trait AirportRepositoryInterface: Send + Sync {
     ) -> Result<Option<Airport>, DomainError>;
     async fn iata_code_exists(&self, iata_code: &str) -> Result<bool, DomainError>;
     async fn delete_airport(&self, id: i64) -> Result<Option<Airport>, DomainError>;
-    async fn list_airports(&self, page: u64, page_size: u64) -> Result<Vec<Airport>, DomainError>;
+    async fn list_airports(&self, active_only: bool) -> Result<Vec<Airport>, DomainError>;
 }

@@ -1,170 +1,201 @@
-# Flight Booking Backend — Rust
+# Flight Booking Backend (Rust)
 
-A backend system for flight booking operations, built with Rust using Clean Architecture and Domain-Driven Design principles.
+Backend service for airline-style booking flows, implemented with Clean Architecture + Domain-Driven Design.
 
-> **Note:** This is a learning project built by following a reference implementation and extending it with AI assistance. It covers DDD patterns, event-driven architecture, and Rust backend development practices.
+This project now includes full wiring for:
+- `user`, `auth`, `address`
+- `airport`, `flight`, `booking`, `passenger`, `checkin`, `boarding_pass`
 
 ---
 
-## Architecture
+## Highlights
 
-Layered Clean Architecture with strict dependency inversion:
+- Rust `edition = 2024`
+- Axum HTTP API with OpenAPI generation (`utoipa`)
+- SeaORM repositories (PostgreSQL)
+- Redis cache-aside in application services
+- Kafka event publishers for all business domains
+- Request-context based authorization with admin/user checks
+- Optimistic locking on mutable aggregates (`flight`, `booking`, `passenger`, `checkin`)
 
-```
+---
+
+## Project Structure
+
+```text
 src/
-├── domain/          # Entities, business rules, repository traits, domain events
-├── application/     # Use case orchestration, DTOs, service interfaces
-├── infrastructure/  # SeaORM repositories, Kafka publishers, Redis cache, JWT
-├── presentation/    # HTTP handlers, request/response mapping
-├── api/             # Route definitions
-└── core/            # AppState, request context, shared config
+├── domain/          # Entities, value rules, domain errors, repository interfaces, domain events
+├── application/     # Commands, views, mappers, use-case services + service interfaces
+├── presentation/    # Request/serializer DTOs, HTTP error mapping
+├── api/             # Controller endpoints + route registration
+├── infrastructure/  # SeaORM repos, Kafka publishers, Redis/JWT/bootstrap/runtime
+└── core/            # AppState, request context, shared response/config contracts
 ```
 
-Dependencies flow inward: `presentation → application → domain ← infrastructure`
+Dependency direction:
+
+`api/presentation -> application -> domain <- infrastructure`
 
 ---
 
-## Technology Stack
+## Implemented Domain Modules
 
-| Layer | Technology |
-|---|---|
-| Language | Rust (Edition 2021) |
-| Web Framework | Axum + Tokio |
-| ORM | SeaORM |
-| Database | PostgreSQL |
-| Cache | Redis |
-| Messaging | Kafka (rdkafka) |
-| Auth | JWT + Argon2 password hashing |
-| Migration | SeaORM Migration |
-| Container | Docker, Docker Compose |
+### Base modules
+- `user`: register/verify/login/profile/admin management
+- `auth`: login, refresh, logout
+- `address`: user addresses with audit-aware persistence
 
----
-
-## Implemented Domains
-
-### User
-- Registration with domain validation (email uniqueness, password requirements, age check)
-- Email verification flow with token expiry and resend rate limiting
-- Login with failed attempt tracking and account lockout
-- JWT token issuance + refresh token via Redis session store
-- Domain rules as individual structs implementing `BusinessRuleInterface`
-
-### Address
-- Address entity with domain-level validation (phone format, recipient name)
-- Association with user entity
-- Domain events: AddressCreated, AddressUpdated, AddressDeleted
-
-### Airport
-- IATA code validation rule
-- Full CRUD with repository abstraction
-
-### Flight
-- Domain rules: arrival must be after departure, origin ≠ destination, available seats ≤ total seats, check-in window validation
-- Flight management APIs
-
-### Booking
-- Full booking lifecycle: Draft → Confirmed → Cancelled / Expired
-- Payment tracking: Unpaid → Paid → Refunded
-- **Optimistic locking** on updates via `version` field — prevents lost updates under concurrent requests
-- Domain rules: booking code format, amount validation, contact info validation
-
-### Passenger
-- Passenger entity with validation (name, email, phone, DOB not in future, age range)
-- Association with booking
-
-### Check-in
-- Check-in state: Pending → Completed
-- Domain rules: baggage weight validation, check-in must be in pending state
-
-### Boarding Pass
-- Boarding pass generation linked to check-in
+### Flight booking modules
+- `airport`: create/update/get/list/deactivate (soft delete)
+- `flight`: create/update/search/get/cancel with flight status transitions
+- `booking`: create/confirm/cancel/get/list/update payment status
+- `passenger`: add/update/remove/list passenger by booking rules
+- `checkin`: create/update/cancel/list checkins, checkin window validation
+- `boarding_pass`: issue/get/list boarding passes, immutable after issue
 
 ---
 
-## Key Design Patterns
+## API Route Map
 
-**Specification Pattern (BusinessRuleInterface)**
-Each business rule is a separate struct implementing `check_broken() -> Result<(), DomainError>`.
-Rules are composable, independently testable, and easy to extend without modifying entities.
+Public:
+- `/v1/server/*`
+- `/api/v1/auth/*` (login, refresh)
+- `/api/v1/users/*` (register, verify email)
 
-```
-domain/user/rules/
-├── email_must_be_valid.rs
-├── email_must_be_unique.rs
-├── password_must_meet_requirements.rs
-├── account_must_not_be_locked.rs
-├── failed_login_limit_must_not_be_exceeded.rs
-└── ... (15+ rules)
-```
+Protected:
+- `/api/v1/auth/*`
+- `/api/v1/users/*`
+- `/api/v1/addresses/*`
+- `/api/v1/airports/*`
+- `/api/v1/flights/*`
+- `/api/v1/bookings/*`
+- `/api/v1/passengers/*`
+- `/api/v1/checkins/*`
+- `/api/v1/boarding-passes/*`
 
-**Optimistic Locking**
-Booking updates use `WHERE id = $1 AND version = $expected` with auto-increment on `version`.
-Returns `OptimisticLockConflict` if another request updated the record concurrently.
-
-**Event Publishing (Kafka)**
-Domain events published via typed `EventPublisher` traits:
-- `UserRegisteredEvent` → `user_registered` topic
-- `UserActivatedEvent` → `user_activated` topic
-- `UserLoggedInEvent` → `user_logged_in` topic
-- `AddressCreatedEvent`, `AddressUpdatedEvent`, `AddressDeletedEvent`
-
-**Request Context**
-`RequestContextProvider` trait injected into repositories for audit fields (created_by, updated_by) without coupling domain to HTTP layer.
+Swagger UI:
+- `http://localhost:<PORT>/swagger-ui`
+- OpenAPI JSON: `http://localhost:<PORT>/api-docs/openapi.json`
 
 ---
 
-## Database
+## AppState Wiring (Current)
 
-Migrations managed via SeaORM Migration crate, located in `migration/src/`.
+`AppState` includes:
+- Infrastructure handles: `db`, `deploy_mode`, `ctx_provider`, `gateway_registry`
+- Service handles: `user_service`, `auth_service`, `address_service`, `airport_service`, `flight_service`, `booking_service`, `passenger_service`, `checkin_service`, `boarding_pass_service`
 
-Implemented tables: `users`, `addresses`, `airports`, `flights`, `bookings`, `passengers`, `checkins`, `boarding_passes`
+Bootstrap flow (`AppStateBuilder`):
+1. Build DB/Redis/Kafka/context/gateway resources
+2. Build cache + repositories + token/password adapters
+3. Build Kafka event publishers
+4. Build all application services
+5. Assemble `AppState`
 
 ---
 
-## Running the Project
+## Event Publishing
 
-### Prerequisites
-- Rust (stable)
+Kafka publishers are implemented for:
+- `user`, `address`
+- `airport`, `flight`, `booking`, `passenger`, `checkin`, `boarding_pass`
+
+Each module uses typed event structs in `src/domain/<module>/events/` and trait-driven publishers in `src/application/common/event_publisher.rs`.
+
+---
+
+## Data + Persistence
+
+- ORM: SeaORM
+- Migrations: `migration/`
+- Core tables:
+  - `users`
+  - `addresses`
+  - `airports`
+  - `flights`
+  - `bookings`
+  - `passengers`
+  - `checkins`
+  - `boarding_passes`
+
+---
+
+## Prerequisites
+
+- Rust (stable toolchain)
 - Docker + Docker Compose
+- PostgreSQL, Redis, Kafka (via docker compose is easiest)
 
-### Environment variables
+For Windows builds, C/C++ toolchain and CMake are required (for some native crate dependencies).
 
-Copy and configure `.env`:
+---
+
+## Configuration
+
+Create `.env` (example values):
 
 ```env
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/flight_db
 REDIS_URL=redis://localhost:6379
 KAFKA_BROKERS=localhost:9092
-JWT_SECRET=your_secret_key
+JWT_SECRET=replace_me
 ```
 
-> ⚠️ Never commit `.env` with real credentials to version control.
+Do not commit real credentials.
 
-### Run with Docker
+---
 
-```bash
-docker-compose up --build
-```
-
-### Run locally
+## Run Locally
 
 ```bash
-# Start infrastructure
-docker-compose up postgres redis kafka -d
+# 1) Start infra services
+docker-compose up -d postgres redis kafka
 
-# Run migrations
+# 2) Run migrations
 cargo run -p migration
 
-# Start server
-cargo run
+# 3) Start server
+cargo run --bin flight-booking
+```
+
+Windows note (if native crypto build fails):
+
+```powershell
+$env:AWS_LC_SYS_C_STD = "11"
+$env:AWS_LC_SYS_NO_ASM = "1"
+cargo check
 ```
 
 ---
 
-## Known Limitations
+## Useful Commands
 
-- No test coverage (unit or integration tests)
-- No authentication on most endpoints beyond user/auth routes
-- Kafka consumer not implemented — only event publishing
-- No pagination on list endpoints
-- Single-node only — no distributed tracing or metrics
+```bash
+# format + lint (if configured in your environment)
+cargo fmt
+cargo clippy
+
+# compile check
+cargo check
+
+# run app
+cargo run --bin flight-booking
+```
+
+---
+
+## Current Status
+
+- Full route registration for all 6 booking modules is done.
+- `AppState` and bootstrap wiring are updated for all new services/repositories/publishers.
+- Kafka publisher implementations exist for every module.
+- `cargo check` passes in current environment (with warnings).
+
+---
+
+## Known Gaps
+
+- No full automated test suite yet (unit/integration/e2e).
+- Some warnings still exist (unused imports/variables, deprecated API use).
+- Kafka consumers/processors are not implemented yet (publishers only).
+- Pagination/filtering strategy is basic in some list endpoints.

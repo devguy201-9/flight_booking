@@ -2,7 +2,6 @@ use crate::domain::airport::airport_repository_interface::AirportRepositoryInter
 use crate::domain::airport::entity::Airport as DomainAirport;
 use crate::domain::airport::error::AirportDomainError;
 use crate::domain::error::DomainError;
-use crate::domain::user::errors::UserDomainError;
 use crate::infrastructure::persistence::seaorm::entities::airport::{ActiveModel, Column, Entity};
 use crate::infrastructure::persistence::seaorm::mappers::airport_mapper::AirportMapper;
 use async_trait::async_trait;
@@ -40,7 +39,7 @@ impl SeaOrmAirportRepository {
                 {
                     // Parse field from msg
                     let field = map_conflict_field(&msg);
-                    return UserDomainError::Conflict {
+                    return AirportDomainError::Conflict {
                         field,
                         message: err.to_string(),
                     }
@@ -74,7 +73,7 @@ impl SeaOrmAirportRepository {
         airport_err.into()
     }
     fn base_query() -> Select<Entity> {
-        Entity::find().filter(Column::IsActive.eq(false))
+        Entity::find().filter(Column::IsActive.eq(true))
     }
 }
 
@@ -112,7 +111,6 @@ impl AirportRepositoryInterface for SeaOrmAirportRepository {
 
     async fn find_airport_by_id(&self, id: i64) -> Result<Option<DomainAirport>, DomainError> {
         let model = Entity::find_by_id(id)
-            .filter(Column::IsActive.eq(false))
             .one(self.db.as_ref())
             .await
             .map_err(Self::map_db_err)?;
@@ -163,13 +161,15 @@ impl AirportRepositoryInterface for SeaOrmAirportRepository {
 
     async fn list_airports(
         &self,
-        page: u64,
-        page_size: u64,
+        active_only: bool,
     ) -> Result<Vec<DomainAirport>, DomainError> {
-        let page_index = page.saturating_sub(1);
-        let models = Self::base_query()
-            .paginate(self.db.as_ref(), page_size)
-            .fetch_page(page_index)
+        let query = if active_only {
+            Entity::find().filter(Column::IsActive.eq(true))
+        } else {
+            Entity::find()
+        };
+        let models = query
+            .all(self.db.as_ref())
             .await
             .map_err(Self::map_db_err)?;
 
